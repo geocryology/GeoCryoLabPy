@@ -1,10 +1,10 @@
 import serial
 
-class Fluke1502A:
+class Fluke7341:
     
     ENDL                = "\r"
     TIMEOUT_INIT        = 0.25
-    TIMEOUT_CONSECUTIVE = 0.05
+    TIMEOUT_CONSECUTIVE = 0.10
     CHARS_PER_READ      = 16
 
     def __init__(self, units="c"):
@@ -13,7 +13,7 @@ class Fluke1502A:
         
     # Connects and opens serial connection to specified port
     # port must be a string in the form COM* where * is one or more digits - ex. "COM7" or "COM12"
-    def connect(self, port, baud=9600, timeout=2.0):
+    def connect(self, port, baud=2400, timeout=2.0):
         
         try:
             self.conn = serial.Serial(port, baud, timeout=timeout, rtscts=True, write_timeout=timeout)
@@ -33,7 +33,7 @@ class Fluke1502A:
     def disconnect(self):
         self.conn.close()
         
-    # Sends specified command to the Fluke1502A. Paramater cmd should be a string with no newline character
+    # Sends specified command to the Fluke7341. Paramater cmd should be a string with no newline character
     def sendCmd(self, cmd, nBytes=4096):
         cmd += self.ENDL
         cmd = bytearray(cmd)
@@ -89,8 +89,6 @@ class Fluke1502A:
     # valid options for units are as follows (case insensitive):
     #   Celsius   - "c", "celsius"
     #   Farenheit - "f", "farenheit"
-    #   Kelvin    - "k", "kelvin"
-    #   Ohms      - "o", "ohms"
     def setUnits(self, units):
         units = units.lower()
         if   units in ["c", "celsius"]:
@@ -99,12 +97,6 @@ class Fluke1502A:
         elif units in ["f", "farenheit"]:
             self.sendCmd("u=f")
             self.units = "f"
-        elif units in ["k", "kelvin"]:
-            self.sendCmd("u=k")
-            self.units = "k"
-        elif units in ["o", "ohms"]:
-            self.sendCmd("u=o")
-            self.units = "o"
         else:
             self.error("Invalid units: {}".format(units))
 
@@ -120,9 +112,9 @@ if __name__ == "__main__":
     import datetime
     import time
 
-    fluke = Fluke1502A()
+    fluke = Fluke7341()
     if not fluke.connect("COM7"):
-        print "Failed to connect to Fluke1502A"
+        print "Failed to connect to Fluke7341"
         exit(1)
 
     print fluke.sendCmd("t")
