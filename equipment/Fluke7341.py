@@ -1,11 +1,21 @@
 import serial
 
+# Class for Fluke 7341 Calibration Bath with Serial Interface
+#   - Reads and writes are slow on this device (max 2400 BAUD)
+#   - Only supports Celsius and Farenheit internally (Kelvin must be calculated)
+#   - Serial interface should be configured to 2400 BAUD, Full Duplex
+#   - 
+
 class Fluke7341:
     
     ENDL                = "\r"
-    TIMEOUT_INIT        = 0.25
-    TIMEOUT_CONSECUTIVE = 0.10
+    TIMEOUT_INIT        = 2.00
+    TIMEOUT_CONSECUTIVE = 0.25
     CHARS_PER_READ      = 16
+    
+    # Setpoint Min/Max values are in Celsius
+    SETPOINT_MAX        =  90
+    SETPOINT_MIN        = -30
 
     def __init__(self, units="c"):
         self.units = units
@@ -24,8 +34,9 @@ class Fluke7341:
             self.error("Failed to connect to port {}".format(port))
             return False
             
-        self.sendCmd("u={}".format(self.units))
+        self.setUnits("c")
         self.sendCmd("sa=0")
+        self._recv_all()
 
         return True
 
@@ -40,8 +51,7 @@ class Fluke7341:
         
         self._send(cmd)
         return self._recv_all()
-        #return self._recv(nBytes)
-        
+
     # Raw serial write
     def _send(self, bytes):
         
@@ -82,7 +92,8 @@ class Fluke7341:
         
     def readTemp(self):
         res  = self.sendCmd("t")
-        temp = res[0][2:12].strip()
+        #print res
+        temp = res[0][2:10].strip()
         return temp
         
     # set units of measurements for the device
@@ -98,8 +109,35 @@ class Fluke7341:
             self.sendCmd("u=f")
             self.units = "f"
         else:
-            self.error("Invalid units: {}".format(units))
-
+            self.warning("Invalid units: {}".format(units))
+            return False
+        
+        return True            
+            
+    # set the setpoint of in the same units as set wih setUnits()
+    def setSetpoint(self, setpoint, units="c"):
+        
+        if units != self.units:
+            if not self.setUnits(units):
+                self.warning("Invalid units '{}', setpoint unchanged".format(units))
+                return False
+        
+        if setpoint > self.SETPOINT_MAX:
+            self.warning("Setpoint '{}' too high, max = {}. Setpoint unchanged.".format(setpoint, self.SETPOINT_MAX))
+            return False
+            
+        if setpoint < self.SETPOINT_MIN:
+            self.warning("Setpoint '{}' too low, min = {}. Setpoint unchanged.".format(setpoint, self.SETPOINT_MIN))
+            return False
+            
+        self.sendCmd("s={}".format(setpoint))
+        self.info("Setpoint changed to {} {}".format(setpoint, units)
+        return True
+    
+    # Prints warning message but does not exit
+    def warning(self, msg):
+        print "[WARNING] " + format(msg)
+        
     # Prints error message and exits
     def error(self, msg):
         print "[ERROR] " + format(msg)
@@ -117,8 +155,12 @@ if __name__ == "__main__":
         print "Failed to connect to Fluke7341"
         exit(1)
 
-    print fluke.sendCmd("t")
-    print fluke.sendCmd("h")
+    print "temp: {}".format(fluke.sendCmd("t"))
+    print "help: {}".format(fluke.sendCmd("h"))
+    
+    fluke.setSetpoint(-40)
+    fluke.setSetpoint(100)
+    fluke.setSetpoint(10)
     
     with open("out.csv", "wb") as csvFile:
         csvFile.write("time,{}".format(fluke.units))
@@ -127,7 +169,7 @@ if __name__ == "__main__":
             timestamp = datetime.datetime.now().isoformat().split(".")[0]
             csvFile.write("{},".format(timestamp))
             csvFile.write(fluke.readTemp())
-            csvFile.write("\n")
+            csvFile.write("\r\n")
             
     #print fluke.readTemp()
     

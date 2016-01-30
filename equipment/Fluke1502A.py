@@ -135,7 +135,7 @@ if __name__ == "__main__":
             timestamp = datetime.datetime.now().isoformat().split(".")[0]
             csvFile.write("{},".format(timestamp))
             csvFile.write(fluke.readTemp())
-            csvFile.write("\n")
+            csvFile.write("\r\n")
             
     #print fluke.readTemp()
     
