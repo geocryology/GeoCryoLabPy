@@ -131,9 +131,13 @@ class Fluke7341:
             return False
             
         self.sendCmd("s={}".format(setpoint))
-        self.info("Setpoint changed to {} {}".format(setpoint, units)
+        self.info("Setpoint changed to {} {}".format(setpoint, units))
         return True
     
+    # Prints info message
+    def info(self, msg):
+        print "[INFO] " + format(msg)
+        
     # Prints warning message but does not exit
     def warning(self, msg):
         print "[WARNING] " + format(msg)

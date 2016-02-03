@@ -107,6 +107,23 @@ class Fluke1502A:
             self.units = "o"
         else:
             self.error("Invalid units: {}".format(units))
+            
+    # Reads and parses output for reading simple vars like probe type,
+    # calibration parameters, etc
+    def getValue(self, val):
+        res = self.sendCmd(val)
+        val = res[0].split(":")[1].strip()
+        return val
+        
+    def printCalibrationData(self):
+        print "Probe Type: {}".format(self.getValue("pr"))
+        print "   Scaling: {}".format(self.getValue("sc"))
+        for val in ["r0", "a4", "b4", "a7", "b7", "c7", " d"]:
+            print "     {}: {}".format(val, self.getValue(val))
+        
+    def printModelInfo(self):
+        print "Model:", self.sendCmd("*ver")[0]
+        print "ID:   ", self.sendCmd("*idn")[0]
 
     # Prints error message and exits
     def error(self, msg):
@@ -121,21 +138,25 @@ if __name__ == "__main__":
     import time
 
     fluke = Fluke1502A()
-    if not fluke.connect("COM7"):
+    if not fluke.connect("COM5"):
         print "Failed to connect to Fluke1502A"
         exit(1)
 
-    print fluke.sendCmd("t")
-    print fluke.sendCmd("h")
+    fluke.printModelInfo()
+    fluke.printCalibrationData()
     
     with open("out.csv", "wb") as csvFile:
-        csvFile.write("time,{}".format(fluke.units))
+        csvFile.write("time,{}\n".format(fluke.units))
         
+        t0 = time.time()
         for i in range(10):
             timestamp = datetime.datetime.now().isoformat().split(".")[0]
             csvFile.write("{},".format(timestamp))
             csvFile.write(fluke.readTemp())
             csvFile.write("\r\n")
+            print "reading {}".format(i)
+            time.sleep(t0 + 1 - time.time())
+            t0 = time.time()
             
     #print fluke.readTemp()
     
