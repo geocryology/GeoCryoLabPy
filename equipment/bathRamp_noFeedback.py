@@ -11,7 +11,7 @@ TEMP_MIN  = 25.00
 TEMP_MAX  = 26.00
 INCREMENT = 0.05
 HOLD_TIME = 180
-ERROR     = 0.0025
+ERROR     = 0.05
 
 def waitStable(targetTemp, probe):
     t0 = time.time()
