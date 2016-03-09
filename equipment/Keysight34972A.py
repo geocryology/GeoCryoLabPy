@@ -1,4 +1,4 @@
-import telnetlib
+import visa
 import time
 
 
@@ -6,56 +6,49 @@ class Keysight34972A():
     
     PROMPT = "34972A>"
     ENDL   = "\n"
+    ID     = u'Agilent Technologies,34972A,MY49021266,1.16-1.12-02-02\n'
     
-    def __init__(self, ip, port=5024):
-        self.ip   = ip
-        self.port = port
-        self.conn = None
+    def __init__(self):
+        self.rm = visa.ResourceManager()
+        self.instance = None
         
     def connect(self):
         
-        try:
-            self.conn = telnetlib.Telnet(self.ip, self.port, timeout=10)
-        except KeyboardInterrupt:
-            system.exit(1)
-        except:
+        self.instance = self.rm.open_resource(u'USB0::2391::8199::my49021266::0::INSTR')
+        id = (self.query("*IDN?"))
+        if id != self.ID:
+            print "ID discrepancy:"
+            print "expected:", self.ID
+            print "actual:  ", id
             return False
-        
-        self.sendCmd("*RST")
-        
+            
+        keysight.timeout = None
+        self.write("*RST")
+        self.write("*CLS")
         return True
         
     def disconnect(self):
-        self.conn.close()
+        self.instance.close()
         
-    def sendCmd(self, cmd):
-        self._send(cmd)
-        return self._recv()
+    def write(self, cmd):
+        return self.instance.write(cmd)
+        
+    def query(self, cmd):
+        return self.instance.query(cmd)
  
-    def _send(self, cmd):
-        self.conn.write(cmd + self.ENDL)
-        
-    def _recv(self, timeout=2):
-        res = self.conn.read_until(self.PROMPT, timeout).splitlines()
-        return res
-    
-    
 if __name__ == "__main__":
     
-    ip   = "134.117.231.204"
-    port = 5024
-    
-    keysight = Keysight34972A(ip, port)
+    keysight = Keysight34972A()
 
     if not keysight.connect():
-        print "Failed to connect to Keysight34972A at {}:{}".format(ip, port)
+        print "Failed to connect to Keysight34972A".format()
         exit(1)
         
-    keysight.sendCmd("DISP:TEXT \"HELLO\"")
-    keysight.sendCmd("DISP:TEXT:CLEAR")
-    keysight.sendCmd("CONFIGURE:TEMPERATURE TC,J,(@101)")
-    keysight.sendCmd("ROUT:SCAN (@101)")
-    keysight.sendCmd("READ?")
-    keysight.sendCmd("READ?")
-    keysight.sendCmd("READ?")
+    keysight.write("format:reading:channel 1;alarm 1;unit 1;time:type rel")
+    keysight.write("configure:temperature auto,max,(@101)")
+    keysight.write("trigger:count 3")
+    keysight.write("initiate")
+    
+    print keysight.query("fetch?")
+        
     keysight.disconnect()

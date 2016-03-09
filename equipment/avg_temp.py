@@ -4,7 +4,7 @@ import time
 from Fluke1502A import Fluke1502A
 
 NUM_SAMPLES = 1000
-MAX_STD_DEV = 0.0001
+MAX_STD_DEV = 0.000001
 
 def getStd(samples, avg):
     std = 0
@@ -18,8 +18,8 @@ if __name__ == "__main__":
     probe   = Fluke1502A()
     done    = False
     samples = []
-    
-    if not probe.connect("COM5"):
+
+    if not probe.connect("COM7"):
         print "Failed to connect to probe"
         exit(1)
         
@@ -40,7 +40,7 @@ if __name__ == "__main__":
         average = sum(samples) / NUM_SAMPLES
         std     = getStd(samples, average)
         
-        print chr(8) * 48, "[{}]Average: {}, STD: {}".format(oldestSampleIndex, average, std),
+        print chr(8) * 80, "[{}]Average: {:.6}, STD: {:.6}        ".format(oldestSampleIndex, average, std),
     
     print "Done"
         

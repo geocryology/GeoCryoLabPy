@@ -7,11 +7,11 @@ import time
 from Fluke1502A import Fluke1502A
 from Fluke7341  import Fluke7341
 
-TEMP_MIN  = 25.00
-TEMP_MAX  = 26.00
-INCREMENT = 0.05
+TEMP_MIN  = -5.00
+TEMP_MAX  = 5.00
+INCREMENT = 0.5
 HOLD_TIME = 180
-ERROR     = 0.05
+TOLERANCE = 0.05
 
 def waitStable(targetTemp, probe):
     t0 = time.time()
@@ -19,7 +19,7 @@ def waitStable(targetTemp, probe):
     currentTemp = float(probe.readTemp())
     
     while not done:
-        if not (targetTemp - ERROR < currentTemp < targetTemp + ERROR):
+        if not (targetTemp - TOLERANCE < currentTemp < targetTemp + TOLERANCE):
             print "temp not stable: {}".format(currentTemp)
             t0 = time.time()
         else:
