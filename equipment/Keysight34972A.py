@@ -11,11 +11,12 @@ class Keysight34972A():
     def __init__(self):
         self.rm = visa.ResourceManager()
         self.instance = None
+        self.scanList = []
         
     def connect(self):
         
         self.instance = self.rm.open_resource(u'USB0::2391::8199::my49021266::0::INSTR')
-        id = (self.query("*IDN?"))
+        id = (self._query("*IDN?"))
         if id != self.ID:
             print "ID discrepancy:"
             print "expected:", self.ID
@@ -23,18 +24,59 @@ class Keysight34972A():
             return False
             
         keysight.timeout = None
-        self.write("*RST")
-        self.write("*CLS")
+        self._write("*RST")
+        self._write("*CLS")
         return True
         
     def disconnect(self):
         self.instance.close()
         
-    def write(self, cmd):
+    def _write(self, cmd):
         return self.instance.write(cmd)
         
-    def query(self, cmd):
+    def _query(self, cmd):
         return self.instance.query(cmd)
+        
+    # initializes J-type thermocouples to be read in degrees Celsius
+    # scanList is a list of probe IDs (can be 1 to 22)
+    # ex: initialize([1]), initialize(range(1, 5)), initialize([1, 4, 6])
+    def initialize(self, scanList):
+        
+        for probe in scanList:
+            if not (1 <= probe <= 22):
+                print "probe must be an integer between 1 and 22 (inclusive)"
+                exit(1)
+                
+        self.scanList = scanList
+        
+        # add 100 to each probe value (makes the probe ID attached to channel 1)
+        scanList = [str(probe + 100) for probe in scanList]
+        
+        # convert list of probes to a scan list string
+        probeString = ",".join(scanList)
+        print probeString
+                
+        self._write("format:reading:channel 1;alarm 1;unit 1;time:type rel")
+        self._write("configure:temperature tc,j,DEF,(@{})".format(probeString))
+        self._write("trigger:count 1")
+        
+    def readTemps(self):
+        self._write("initiate")
+        temps = self._query("fetch?").split(',')
+        return [float(temp) for temp in temps]
+        
+    def readTempsDict(self):
+        tempDict = {}
+        self._write("initiate")
+        readings = self._query("fetch?").split(',')
+        i = 0
+        for probe in self.scanList:
+            tempDict[str(probe)] = float(readings[i])
+            i += 1
+            
+        return tempDict
+        
+
  
 if __name__ == "__main__":
     
@@ -43,12 +85,26 @@ if __name__ == "__main__":
     if not keysight.connect():
         print "Failed to connect to Keysight34972A".format()
         exit(1)
-        
-    keysight.write("format:reading:channel 1;alarm 1;unit 1;time:type rel")
-    keysight.write("configure:temperature auto,max,(@101)")
-    keysight.write("trigger:count 3")
-    keysight.write("initiate")
+    """
+    keysight._write("format:reading:channel 1;alarm 1;unit 1;time:type rel")
+    keysight._write("configure:temperature tc,j,DEF,(@102:120)")
+    keysight._write("trigger:count 1")
+    """
+    keysight.initialize([1, 2, 3, 16])
     
-    print keysight.query("fetch?")
+    print keysight.readTemps()
+    
+    print keysight.readTempsDict()
+    
+    """
+    while True:
+        print "initiating"
+        keysight._write("initiate")
+        temp = keysight._query("fetch?").split(',')
+        #print chr(8) * 32 + str(temp),
+        print temp
+      
+        time.sleep(2)
         
+    """
     keysight.disconnect()
