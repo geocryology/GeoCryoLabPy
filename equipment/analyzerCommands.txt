@@ -1,0 +1,100 @@
+Select channel:     ANAOCH{1|2}
+Port attenuation:   ATT{R|A|B} <0|10|20|30|40|50>   [dB]
+Auto attenuation:   ATTAUTO {OFF|ON|0|1}
+Enable averaging:   AVER {OFF|ON|0|1}
+Averaging factor:   AVERFACT <numeric: 1..999>
+Reset averaging:    AVERREST
+Auto-scale data:    AUTO
+
+Manual IF BW:       BW <numeric>                    [Hz]
+Auto IF BW:         BWAUTO {ON|OFF|0|1}
+
+Sweep center val:   CENT <numeric>                  [Hz]
+Select channel:     CHAN{1|2}
+Readout Format:     CIRF {RI|LIN|LOG|RX|GB|SWR}     Real/Imaginary, Linear mag/phase, Log mag/phase, Complex impedance (R+jX), complex admittance (G+jB), SWR and phase
+Clear status:       CLES|*CLS
+Cont. Trigger:      CONT
+
+Display format:     FMT {LOGM|PHAS|DELA|LINM|SWR|REAL|
+                         IMAG|SMITH|POLA|ADMIT|SPECT|
+                         NOISE|LINY|LOGY|COMP|EXPP}
+Trace data format:  FORM2|FORM3|FORM4|FORM5         IEEE 32-bit, IEEE 64-bit, ASCII, MS_DOS
+
+Get analyzer ID:    *IDN?
+
+Measurement type:   MEAS {AR|BR|R|A|B|}
+
+Network analyzer:   NA
+
+Output trace data:  OUTPDTRC?
+Output freq. data:  OUTPSWPRM?
+
+Phase units:        PHAU {RAD|DEG}
+Number of points:   POIN <numeric 2..801>
+
+Reset to defaults:  *RST
+
+Characteristic Impedance of coaxial cable offset: 
+                    SETZ <numeric>                  [Ohm]
+Single Trigger:     SING
+Sweep start freq:   STAR <numeric, 10-510M>         [Hz|dBm]
+Sweep stop freq:    STOP <numeric, 10-510M>         [Hz|dBm]
+Auto sweep time:    SWETAUTO {OFF|ON|0|1}
+Select sweep type:  SWPT {LINF|LOGF|LIST|POWE}      linear, logarithmic, list, power sweep
+
+Wait until ready:   *WAI
+
+Impedance Analyzer: ZA
+
+
+
+CHAN1
+NA
+SWPT LOGF
+BWAUTO 1
+CIRF RI
+POIN 41
+FORM4
+MEAS AB
+PHAU DEG
+STAR 100 HZ
+STOP 500000000 HZ
+SWETAUTO 1
+
+FMT LOGM
+OUTPDTRC?
+
+FMT PHAS
+OUTPDTRC?
+
+FMT REAL
+OUTPDTRC?
+
+FMT IMAG
+OUTPDTRC?
+
+#########
+
+NA
+
+CHAN1
+SWPT LOGF
+BWAUTO 1
+POIN 801
+FORM4
+MEAS A
+PHAU DEG
+STAR 1000 HZ
+STOP 500000000 HZ
+FMT LINM
+
+CHAN2
+SWPT LOGF
+BWAUTO 1
+POIN 801
+FORM4
+MEAS B
+PHAU DEG
+STAR 1000 HZ
+STOP 500000000 HZ
+FMT LINM
