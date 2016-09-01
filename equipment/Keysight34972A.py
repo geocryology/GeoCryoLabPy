@@ -1,12 +1,14 @@
 import visa
 import time
 
-
 class Keysight34972A():
     
     PROMPT = "34972A>"
     ENDL   = "\n"
     ID     = u'Agilent Technologies,34972A,MY49021266,1.16-1.12-02-02\n'
+    
+    MODE_RESISTANCE  = 0
+    MODE_TEMPERATURE = 1
     
     def __init__(self):
         self.rm = visa.ResourceManager()
@@ -15,7 +17,7 @@ class Keysight34972A():
         
     def connect(self):
         
-        self.instance = self.rm.open_resource(u'USB0::2391::8199::my49021266::0::INSTR')
+        self.instance = self.rm.open_resource(u'USB::2391::8199::my49021266::0::INSTR')
         id = (self._query("*IDN?"))
         if id != self.ID:
             print "ID discrepancy:"
@@ -23,7 +25,7 @@ class Keysight34972A():
             print "actual:  ", id
             return False
             
-        keysight.timeout = None
+        #self.instance.timeout = None
         self._write("*RST")
         self._write("*CLS")
         return True
@@ -40,7 +42,7 @@ class Keysight34972A():
     # initializes J-type thermocouples to be read in degrees Celsius
     # scanList is a list of probe IDs (can be 1 to 22)
     # ex: initialize([1]), initialize(range(1, 5)), initialize([1, 4, 6])
-    def initialize(self, scanList):
+    def initialize(self, mode, scanList):
         
         for probe in scanList:
             if not (1 <= probe <= 22):
@@ -57,15 +59,18 @@ class Keysight34972A():
         print probeString
                 
         self._write("format:reading:channel 1;alarm 1;unit 1;time:type rel")
-        self._write("configure:temperature tc,j,DEF,(@{})".format(probeString))
+        if mode == self.MODE_TEMPERATURE:
+            self._write("configure:temperature tc,j,DEF,(@{})".format(probeString))
+        elif mode == self.MODE_RESISTANCE:
+            self._write("configure:resistance (@{})".format(probeString))
         self._write("trigger:count 1")
         
-    def readTemps(self):
+    def readValues(self):
         self._write("initiate")
         temps = self._query("fetch?").split(',')
         return [float(temp) for temp in temps]
         
-    def readTempsDict(self):
+    def readValuesDict(self):
         tempDict = {}
         self._write("initiate")
         readings = self._query("fetch?").split(',')
@@ -76,8 +81,6 @@ class Keysight34972A():
             
         return tempDict
         
-
- 
 if __name__ == "__main__":
     
     keysight = Keysight34972A()
@@ -90,11 +93,11 @@ if __name__ == "__main__":
     keysight._write("configure:temperature tc,j,DEF,(@102:120)")
     keysight._write("trigger:count 1")
     """
-    keysight.initialize([1, 2, 3, 16])
+    keysight.initialize(keysight.MODE_RESISTANCE, [1, 2])
     
-    print keysight.readTemps()
+    print keysight.readValues()
     
-    print keysight.readTempsDict()
+    print keysight.readValuesDict()
     
     """
     while True:
