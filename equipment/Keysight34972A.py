@@ -1,23 +1,34 @@
 import visa
 import time
 
+# Controller class for Keysight 34972A Data Acquisition Unit
+
 class Keysight34972A():
     
-    PROMPT = "34972A>"
-    ENDL   = "\n"
-    ID     = u'Agilent Technologies,34972A,MY49021266,1.16-1.12-02-02\n'
+    PROMPT  = "34972A>"     # Expected text after every command is sent
+    ENDL    = "\n"          # Character to end each command with
     
+    # Address is USB device address, used for connecting to the device
+    # ID is the expected string returned by '*IDN?' query, used to test for successful connection
+    ADDRESS = u'USB::2391::8199::my49021266::0::INSTR'          
+    ID      = u'Agilent Technologies,34972A,MY49021266,1.16-1.12-02-02\n'
+    
+    # ENUM for different operation modes
+    # Temperature mode is not tested, but should work
     MODE_RESISTANCE  = 0
     MODE_TEMPERATURE = 1
     
     def __init__(self):
         self.rm = visa.ResourceManager()
         self.instance = None
-        self.scanList = []
+        
+        # list of sensors to scan, should be in the form of a list of integers, ex: [1, 2, 4, 5, 12, 17]
+        # valid sensors are 1 through 22
+        self.scanList = [] 
         
     def connect(self):
         
-        self.instance = self.rm.open_resource(u'USB::2391::8199::my49021266::0::INSTR')
+        self.instance = self.rm.open_resource(self.ADDRESS)
         id = (self._query("*IDN?"))
         if id != self.ID:
             print "ID discrepancy:"
@@ -30,9 +41,11 @@ class Keysight34972A():
         self._write("*CLS")
         return True
         
+    # close the connection
     def disconnect(self):
         self.instance.close()
-        
+   
+    # raw 
     def _write(self, cmd):
         return self.instance.write(cmd)
         
@@ -65,11 +78,14 @@ class Keysight34972A():
             self._write("configure:resistance (@{})".format(probeString))
         self._write("trigger:count 1")
         
+    # read a float value from each sensor in scanList, returned as a list
     def readValues(self):
         self._write("initiate")
         temps = self._query("fetch?").split(',')
         return [float(temp) for temp in temps]
         
+    # read float values for each sensor, but return it in a dict format, ex:
+    # {"1": 20.1, "2": 32.5, "4": 30.6}
     def readValuesDict(self):
         tempDict = {}
         self._write("initiate")
@@ -80,7 +96,8 @@ class Keysight34972A():
             i += 1
             
         return tempDict
-        
+       
+# test code to read resistances from sensors 1 and 2, and return it in both list and dict formats       
 if __name__ == "__main__":
     
     keysight = Keysight34972A()
@@ -88,26 +105,12 @@ if __name__ == "__main__":
     if not keysight.connect():
         print "Failed to connect to Keysight34972A".format()
         exit(1)
-    """
-    keysight._write("format:reading:channel 1;alarm 1;unit 1;time:type rel")
-    keysight._write("configure:temperature tc,j,DEF,(@102:120)")
-    keysight._write("trigger:count 1")
-    """
+
     keysight.initialize(keysight.MODE_RESISTANCE, [1, 2])
     
     print keysight.readValues()
     
     print keysight.readValuesDict()
     
-    """
-    while True:
-        print "initiating"
-        keysight._write("initiate")
-        temp = keysight._query("fetch?").split(',')
-        #print chr(8) * 32 + str(temp),
-        print temp
-      
-        time.sleep(2)
-        
-    """
+
     keysight.disconnect()
