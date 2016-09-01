@@ -7,7 +7,7 @@ import serial
 
 class Fluke7341:
     
-    ENDL                = "\r"          # last character expected in a response from device
+    ENDL                = "\r"          # character to send after a command
     TIMEOUT_INIT        = 2.00          # time to wait for first character of response
     TIMEOUT_CONSECUTIVE = 0.25          # max time to wait for each subsequent character
     CHARS_PER_READ      = 16            # reads response 16 bytes at a time
