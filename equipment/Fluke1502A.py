@@ -1,15 +1,18 @@
 import serial
 
+# Class for Fluke 1502A Probe reader with Serial Interface
+#   - Serial interface should be configured to 9600 BAUD, Full Duplex
+
 class Fluke1502A:
     
-    ENDL                = "\r"
-    TIMEOUT_INIT        = 0.25
-    TIMEOUT_CONSECUTIVE = 0.05
-    CHARS_PER_READ      = 16
+    ENDL                = "\r"      # character to send after a command
+    TIMEOUT_INIT        = 0.25      # time to wait for first character of response
+    TIMEOUT_CONSECUTIVE = 0.05      # max time to wait for each subsequent character
+    CHARS_PER_READ      = 16        # reads response 16 bytes at a time
 
     def __init__(self, units="c"):
         self.units = units
-        self.conn = None
+        self.conn  = None
         
     # Connects and opens serial connection to specified port
     # port must be a string in the form COM* where * is one or more digits - ex. "COM7" or "COM12"
@@ -40,9 +43,8 @@ class Fluke1502A:
         
         self._send(cmd)
         return self._recv_all()
-        #return self._recv(nBytes)
         
-    # Raw serial write
+    # Raw serial write - use method sendCmd unless you want to send an exact set of bytes
     def _send(self, bytes):
         
         try:
@@ -50,13 +52,7 @@ class Fluke1502A:
         except serial.SerialTimeoutException:
             self.error("Serial write timed out")
     
-    # Raw serial read, up to nBytes
-    def _recv(self, nBytes):
-        bytes = self.conn.read(nBytes)
-        res   = str(bytes).splitlines()
-        return res[1:]
-       
-    # Faster implementation of _recv
+    # Receive response from device
     # Waits up to TIMEOUT_INIT for first byte of response, and then
     # waits TIMEOUT_CONSECUTIVE between each remaining byte of response.
     # This method returns faster than using a single timeout to wait for the full response
@@ -65,21 +61,24 @@ class Fluke1502A:
         originalTimeout   = self.conn.timeout
         self.conn.timeout = self.TIMEOUT_INIT
         
+        # check for response
         byte = self.conn.read()
-        if not byte:
+        if not byte:    # tests if response is empty
             return ""
         else:
             res += str(byte)
             
         self.conn.timeout = self.TIMEOUT_CONSECUTIVE
         
+        # continuously read bytes until buffer is empty
         while byte:
             byte = self.conn.read()
             res += str(byte)
 
         self.conn.timeout = originalTimeout
         return res.splitlines()[1:]
-        
+    
+    # Reads temperature of bath, returned as string
     def readTemp(self):
         res  = self.sendCmd("t")
         temp = res[0][2:12].strip()
@@ -114,7 +113,8 @@ class Fluke1502A:
         res = self.sendCmd(val)
         val = res[0].split(":")[1].strip()
         return val
-        
+    
+    # print calibration settings
     def printCalibrationData(self):
         print "Probe Type: {}".format(self.getValue("pr"))
         print "   Scaling: {}".format(self.getValue("sc"))
