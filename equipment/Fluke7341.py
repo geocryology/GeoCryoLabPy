@@ -4,18 +4,18 @@ import serial
 #   - Reads and writes are slow on this device (max 2400 BAUD)
 #   - Only supports Celsius and Farenheit internally (Kelvin must be calculated)
 #   - Serial interface should be configured to 2400 BAUD, Full Duplex
-#   - 
 
 class Fluke7341:
     
-    ENDL                = "\r"
-    TIMEOUT_INIT        = 2.00
-    TIMEOUT_CONSECUTIVE = 0.25
-    CHARS_PER_READ      = 16
+    ENDL                = "\r"          # last character expected in a response from device
+    TIMEOUT_INIT        = 2.00          # time to wait for first character of response
+    TIMEOUT_CONSECUTIVE = 0.25          # max time to wait for each subsequent character
+    CHARS_PER_READ      = 16            # reads response 16 bytes at a time
     
     # Setpoint Min/Max values are in Celsius
-    SETPOINT_MAX        =  90
-    SETPOINT_MIN        = -30
+    # These values are safety constraints, they can be changed as necessary
+    SETPOINT_MAX        =  50
+    SETPOINT_MIN        = -25
 
     def __init__(self, units="c"):
         self.units = units
@@ -35,8 +35,8 @@ class Fluke7341:
             return False
             
         self.setUnits("c")
-        self.sendCmd("sa=0")
-        self._recv_all()
+        self.sendCmd("sa=0")        # disable automatic data readout
+        self._recv_all()            # clears read buffer
 
         return True
 
@@ -52,7 +52,7 @@ class Fluke7341:
         self._send(cmd)
         return self._recv_all()
 
-    # Raw serial write
+    # Raw serial write - use method sendCmd unless you want to send an exact set of bytes
     def _send(self, bytes):
         
         try:
@@ -60,13 +60,7 @@ class Fluke7341:
         except serial.SerialTimeoutException:
             self.error("Serial write timed out")
     
-    # Raw serial read, up to nBytes
-    def _recv(self, nBytes):
-        bytes = self.conn.read(nBytes)
-        res   = str(bytes).splitlines()
-        return res[1:]
-       
-    # Faster implementation of _recv
+    # Receive response from device
     # Waits up to TIMEOUT_INIT for first byte of response, and then
     # waits TIMEOUT_CONSECUTIVE between each remaining byte of response.
     # This method returns faster than using a single timeout to wait for the full response
@@ -75,21 +69,24 @@ class Fluke7341:
         originalTimeout   = self.conn.timeout
         self.conn.timeout = self.TIMEOUT_INIT
         
+        # check for response
         byte = self.conn.read()
-        if not byte:
+        if not byte: # tests if response is empty
             return ""
         else:
             res += str(byte)
             
         self.conn.timeout = self.TIMEOUT_CONSECUTIVE
         
+        # continuously read bytes until buffer is empty
         while byte:
             byte = self.conn.read()
             res += str(byte)
 
         self.conn.timeout = originalTimeout
         return res.splitlines()[1:]
-        
+    
+    # Reads temperature of bath, returned as string
     def readTemp(self):
         res  = self.sendCmd("t")
         #print res
@@ -114,7 +111,7 @@ class Fluke7341:
         
         return True            
             
-    # set the setpoint of in the same units as set wih setUnits()
+    # set the setpoint of the bath in the same units as set wih setUnits()
     def setSetpoint(self, setpoint, units="c"):
         
         if units != self.units:
