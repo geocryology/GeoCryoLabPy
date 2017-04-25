@@ -8,7 +8,7 @@ from Fluke7341  import Fluke7341
 from Fluke1502A import Fluke1502A
 
 class RingBuffer():
-    
+
     def __init__(self, size):
         self.size    = size
         self.buffer  = [0] * size
@@ -19,7 +19,7 @@ class RingBuffer():
         self.buffer[self.pointer] = value
         self.pointer = (self.pointer + 1) % self.size
         self.count  += 1
-        
+
     def reset(self):
         self.count   = 0
 
@@ -28,7 +28,7 @@ class RingBuffer():
             if not silent:
                 print "[WARNING] Buffer has not been filled completely: [{}/{}]".format(self.count, self.size)
         return sum(self.buffer) / self.size
-        
+
     def getSTD(self):
         std = 0
         avg = self.getAverage()
@@ -36,21 +36,21 @@ class RingBuffer():
             std += (self.buffer[i] - avg) ** 2
         std /= self.size
         return math.sqrt(std)
-        
+
 class EquilibriumMonitor():
-    
+
     def __init__(self, size, name=""):
-        
+
         self.size     = size
         self.readings = RingBuffer(size)
         self.STDs     = [0] * size
         self.count    = 0
         self.name     = name
-        
+
     def update(self, value):
         self.readings.update(value)
         std = self.readings.getSTD()
-        
+
         self.count += 1
 
         if std < min(self.STDs):
@@ -61,18 +61,18 @@ class EquilibriumMonitor():
         elif std > max(self.STDs) * 1.025:
             self._print("diverging")
             self.count  = 0
-            
+
         else self.count < self.size:
             self._print("stabilizing")
-            
+
         self.STDs = self.STDs[1:] + [std]
-        
+
     def isEqualized(self):
         return self.count >= self.size
-        
+
     def reset(self):
         self.count = 0
-    
+
     def _print(self, msg):
         print "{} {} [{}/{}]".format(self.name.rjust(8), msg, self.count, self.size)
 
@@ -80,21 +80,21 @@ class Controller():
 
     COMMANDS  = ["wait", "hold", "ramp", "set", "stop"]
     DEBUG     = True
-    
+
     TEMP_MAX  = 50
     TEMP_MIN  = -25
-    
+
     RAMP  = 0
     HOLD  = 1
     WAIT  = 2
     SET   = 3
     STOP  = 4
     GO    = 5
-    
+
     STATES = ["RAMP", "HOLD", "WAIT", "SET", "STOP", "GO"]
-    
+
     def __init__(self):
-    
+
         self.sampleInterval = 5
         self.bufferSize     = 30
         self.stdHoldCount   = 30
@@ -102,7 +102,7 @@ class Controller():
         self.daq   = None
         self.bath  = None
         self.probe = None
-        
+
         self.sensorList    = [1, 2]
         self.sensorBuffers = []
         self.probeBuffer   = None
@@ -113,8 +113,8 @@ class Controller():
         self.commands  = []             # command queue
         self.command   = 0              # index of current command within self.commands
         self.state     = self.GO
-        
-        # state variables 
+
+        # state variables
         self.rampStart = 0.0
         self.rampEnd   = 0.0
         self.rampInc   = 0.0
@@ -123,7 +123,7 @@ class Controller():
         self.t0        = 0
 
     def connect(self):
-    
+
         self.daq   = Keysight34972A()
         self.bath  = Fluke7341()
         self.probe = Fluke1502A()
@@ -133,53 +133,53 @@ class Controller():
                 print "Failed to connect to Keysight34972A (DAQ)".format()
                 return False
             self.daq.initialize(Keysight34972A.MODE_RESISTANCE, self.sensorList)
-        
+
         if not self.bath.connect("COM5"):
             print "Failed to connect to Fluke7341 (Calibration Bath)"
             return False
-            
+
         if not self.probe.connect("COM7"):
             print "Failed to connect to Fluke1502A (Probe Reader)"
             return False
-            
+
         return True
-        
+
     def disconnect(self):
         self.daq.disconnect()
         self.bath.disconnect()
         self.probe.disconnect()
-        
+
     def init(self):
-        
+
         self.numSensors    =  len(self.sensorList)
         self.sensorBuffers = [EquilibriumMonitor(self.bufferSize, name="sensor{}".format(i)) for i in range(self.numSensors)]
         self.probeBuffer   =  EquilibriumMonitor(self.bufferSize, name="probe")
         self.bathBuffer    =  EquilibriumMonitor(self.bufferSize, name="bath")
-        
+
         timestamp = datetime.datetime.now().isoformat().split('.')[0].replace(':', '-')
         self.file = "{}.csv".format(timestamp)
-        
+
         self.t0 = time.time()
-        
+
     def validateCommand(self, command):
-        
+
         command = command.strip()
         command = command.replace(",", " ")
         if command == "":
             return True
-            
+
         command = command.split()
         com     = command[0].lower()
         args    = command[1:]
 
         if com.startswith("#"):
             return True
-            
+
         elif com == "wait":
             if len(args) > 0:
                 self.error("WAIT requires 0 arguments")
                 return False
-                
+
         elif com == "hold":
             if len(args) != 1:
                 self.error("HOLD requires 1 argument")
@@ -194,7 +194,7 @@ class Controller():
                 except ValueError:
                     self.error("HOLD requires integer argument")
                     return False
-                    
+
         elif com == "ramp":
             if len(args) != 3:
                 self.error("RAMP requires 3 arguments")
@@ -206,7 +206,7 @@ class Controller():
                 except ValueError:
                     self.error("RAMP requires 3 numeric values")
                     return False
-                
+
                 start = args[0]
                 end   = args[1]
                 inc   = args[2]
@@ -214,21 +214,21 @@ class Controller():
                 if direction * inc < 0:
                     self.error("RAMP increment has incorrect sign")
                     return False
-                    
+
                 if start < self.TEMP_MIN:
                     self.error("RAMP start must be greater than or equal to {}".format(self.TEMP_MIN))
                     return False
                 elif start > self.TEMP_MAX:
                     self.error("RAMP start must be less than or equal to {}".format(self.TEMP_MAX))
                     return False
-                    
+
                 if end < self.TEMP_MIN:
                     self.error("RAMP end must be greater than or equal to {}".format(self.TEMP_MIN))
                     return False
                 elif end > self.TEMP_MAX:
                     self.error("RAMP end must be less than or equal to {}".format(self.TEMP_MAX))
                     return False
-        
+
         elif com == "set":
             if len(args) != 1:
                 self.error("SET requires 1 argument")
@@ -240,20 +240,20 @@ class Controller():
                 except ValueError:
                     self.error("SET requires a numeric value")
                     return False
-                
+
                 if setpoint < self.TEMP_MIN:
                     self.error("SET setpoint must be greater than or equal to {}".format(self.TEMP_MIN))
                     return False
                 elif setpoint > self.TEMP_MAX:
                     self.error("SET setpoint must be less than or equal to {}".format(self.TEMP_MAX))
                     return False
-                    
+
         else:
             self.error("Invalid command {}.".format(command))
             return False
-            
+
         return True
-    
+
     def validateProgram(self, program):
         lines = program.splitlines()
         lineCount = 1
@@ -265,30 +265,30 @@ class Controller():
             else:
                 self.error("Error at line {}".format(lineCount))
                 return False
-            
+
             lineCount += 1
         return True
-        
+
     def getAction(self, command):
         if len(command.split()) == 0:
             return []
         return command.split()[0].strip().lower()
-    
+
     def getArgs(self, command):
         args = command.split()[1:]
         args = [float(arg) for arg in args]
         return args
-    
+
     def nextState(self):
- 
+
         if self.command >= len(self.commands):
             self.state = self.STOP
             return
-            
+
         action = self.getAction(self.commands[self.command])
         args = self.getArgs(self.commands[self.command])
         self.command += 1
-        
+
         if action == "wait":
             self.state = self.WAIT
         elif action == "hold":
@@ -308,14 +308,14 @@ class Controller():
         else:
             self.error("UNKOWN COMMAND: {}".format(action))
             self.state = self.STOP
-            
+
         self.resetBuffers()
         self.info("state: {}".format(self.STATES[self.state]))
-        
-        
+
+
     def isEqualized(self):
         return self.probeBuffer.isEqualized()
-        
+
     def resetBuffers(self):
         self.bathBuffer.reset()
         self.probeBuffer.reset()
@@ -323,39 +323,39 @@ class Controller():
             self.sensorBuffers[i].reset()
 
     def runProgram(self, program):
-    
+
         if not self.validateProgram(program):
             print "Invalid program."
             return False
 
         self.init()
-        
+
         if not self.connect():
             return False
 
         self.program = program.splitlines()
         self.command = 0
-        
+
         self.nextState()
-        
+
         while self.state != self.STOP:
             self.step()
-                    
+
             if   self.state == self.GO:
                 self.nextState()
-                
+
             elif self.state == self.HOLD:
                 if self.t0 > self.holdTime:
                     self.nextState()
-                    
+
             elif self.state == self.WAIT:
                 if self.isEqualized():
                     self.nextState()
-                    
+
             elif self.state == self.SET:
                 self.bath.setSetpoint(self.setpoint)
                 self.nextState()
-                
+
             elif self.state == self.RAMP:
                 if abs(self.setpoint - self.rampEnd) < 0.001:
                     if self.isEqualized():
@@ -364,10 +364,10 @@ class Controller():
                     self.setpoint += self.rampInc
                     self.bath.setSetpoint(self.setpoint)
                     self.resetBuffers()
-                        
+
             elif self.state == self.STOP:
                 pass
-                
+
             else:
                 self.error("Unknown state: {}".format(self.state))
 
@@ -384,7 +384,7 @@ class Controller():
         self.probeBuffer.update(probeTemp)
         for i in range(self.numSensors):
             self.sensorBuffers[i].update(resistances[i])
-        
+
         # log results
         t = datetime.datetime.now()
         timestamp   = "{}/{}/{} {}:{}:{}".format(t.month, t.day, t.year, t.hour, t.minute, t.second)
@@ -394,29 +394,29 @@ class Controller():
         minutes = (t.seconds /    60) % 60
         hours   = (t.seconds /  3600) % 24
         elapsedTime   = "{}:{}:{}".format(hours, minutes, seconds)
-        
+
         output = open(self.file, "a")
         resistances = ",".join([str(r) for r in resistances])
         output.write(",".join([timestamp, elapsedTime, str(self.setpoint),
                                   str(bathTemp), str(probeTemp), resistances]))
         output.write("\n")
         output.close()
-        
+
         # wait until next measurement interval
         while time.time() < self.t0 + self.sampleInterval:
             time.sleep(0.01)
 
         self.t0 = self.t0 + self.sampleInterval
-        
+
     def info(self, msg):
         if self.DEBUG: print "[INFO]", msg
-        
+
     def warning(self, msg):
         if self.DEBUG: print "[WARNING]", msg
-        
+
     def error(self, msg):
         if self.DEBUG: print "[ERROR]", msg
-            
+
 """
 command syntax
 ramp 0, -1, -0.1
@@ -428,7 +428,7 @@ wait
 if __name__ == "__main__":
 
     c = Controller()
-    
+
     c.runProgram("""
     SET 20
     WAIT
@@ -440,12 +440,12 @@ if __name__ == "__main__":
     SET 21
     WAIT
     """)
-    
+
     c.disconnect()
 
-
     exit()
-    
+
+    #test code
     c = Controller()
 
     assert c.validateCommand("WAIT") == True
@@ -490,9 +490,9 @@ if __name__ == "__main__":
     assert c.validateCommand("SET a a") == False
     assert c.validateCommand("SET -26") == False
     assert c.validateCommand("SET -2.0") == True
-    
+
     assert c.validateCommand("INVALID COMMAND") == False
-    
+
     assert c.validateProgram("""
     # TEST PROGRAM
     SET 0.0
@@ -500,14 +500,14 @@ if __name__ == "__main__":
     SET -10
     WAIT
     RAMP -10, 0, 1.0
-    
+
     # COMMENT
-    
+
     RAMP 0.0 -10 -2.0
-    
+
     HOLD 1800
     """) == True
-    
+
     assert c.validateProgram("""
     TEST PROGRAM
     SET 0.0
@@ -515,10 +515,10 @@ if __name__ == "__main__":
     SET -10
     WAIT
     RAMP -10, 0, 1.0
-    
+
     # COMMENT
-    
+
     RAMP 0.0 -10 -2.0
-    
+
     HOLD 1800
     """) == False
