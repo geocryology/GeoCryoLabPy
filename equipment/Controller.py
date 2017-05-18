@@ -430,15 +430,8 @@ if __name__ == "__main__":
     c = Controller()
 
     c.runProgram("""
-    SET 20
-    WAIT
-    SET 15
-    WAIT
-    RAMP 10 5 -1
-    RAMP -1 0 0.2
-    RAMP 0 0.1 0.02
-    SET 21
-    WAIT
+    SET 0
+    HOLD 1800
     """)
 
     c.disconnect()
