@@ -145,7 +145,8 @@ class Controller():
         return True
 
     def disconnect(self):
-        self.daq.disconnect()
+        if self.numSensors > 0:
+            self.daq.disconnect()
         self.bath.disconnect()
         self.probe.disconnect()
 
@@ -378,7 +379,10 @@ class Controller():
         # make new readings and update appropriate buffers
         bathTemp    = float(self.bath.readTemp())
         probeTemp   = float(self.probe.readTemp())
-        resistances = self.daq.readValues()
+        
+        resistances = []
+        if self.numSensors > 0:
+            resistances = self.daq.readValues()
 
         self.bathBuffer.update(bathTemp)
         self.probeBuffer.update(probeTemp)
