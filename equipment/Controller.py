@@ -62,7 +62,7 @@ class EquilibriumMonitor():
             self._print("diverging")
             self.count  = 0
 
-        else self.count < self.size:
+        elif self.count < self.size:
             self._print("stabilizing")
 
         self.STDs = self.STDs[1:] + [std]
@@ -103,7 +103,7 @@ class Controller():
         self.bath  = None
         self.probe = None
 
-        self.sensorList    = [1, 2]
+        self.sensorList    = []
         self.sensorBuffers = []
         self.probeBuffer   = None
         self.bathBuffer    = None
