@@ -62,3 +62,6 @@ target/
 *.csv
 *.png
 *.zip
+
+# credential file
+credentials.txt
