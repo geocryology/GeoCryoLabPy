@@ -142,7 +142,7 @@ def generateFile(filename, results, freqs, Rs, nPoints, f1, f2, powerLevel):
 if __name__ == "__main__":
 
     # default values
-    Rs = 1000.0
+    Rs = 50.0
     nPoints = 801
     f1 = 100
     f2 = 100000000

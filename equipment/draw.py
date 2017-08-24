@@ -91,6 +91,3 @@ if __name__ == "__main__":
 
     draw(filename)
 
-
-    #for f in os.listdir("power sweep\\1k"):
-    #    draw.draw("power sweep\\1k\\{}".format(f))
