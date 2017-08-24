@@ -15,20 +15,49 @@ class Fluke1502A:
         self.conn  = None
 
     # Connects and opens serial connection to specified port
-    # port must be a string in the form COM* where * is one or more digits - ex. "COM7" or "COM12"
-    def connect(self, port, baud=9600, timeout=2.0):
+    # port must be an integer (usually between 1 and 12)
+    # use a value of 0 (default) for the port to try auto-detection of the port)
+    def connect(self, port=0, baud=9600, timeout=2.0):
 
+        if port == 0: # default, no port specified
+            portList = range(1, 12)
+        else:
+            portList = [port]
+
+        for p in portList:
+            print "Attempting to connect to port {} ...".format(p),
+            if self.tryPort(p, baud, timeout):
+                print "Connected"
+
+                # we connected to something, now request identifier to verify it is the 1502A
+                res = self.sendCmd("*IDN?")
+                if len(res) > 0:
+                    if "HART,1502A" in res[0]:
+                        print "  Correctly identified as Fluke 1502A"
+                        return True
+                    else:
+                        print "  Failed to identify as Fluke 1502A"
+                else:
+                    print "  No response"
+            else:
+                print "Failed"
+
+        return False
+
+    def tryPort(self, port, baud, timeout):
+        port = "COM{}".format(port)
         try:
-            self.conn = serial.Serial(port, baud, timeout=timeout, rtscts=True, write_timeout=timeout)
+            self.conn = serial.Serial(port=port, baudrate=baud, timeout=timeout, rtscts=True, write_timeout=timeout)
+            self.sendCmd("u={}".format(self.units))
+            self.sendCmd("sa=0")
+            self._recv_all()
         except ValueError:
             self.error("Invalid COM port or Baud rate specified")
             return False
         except serial.SerialException:
-            self.error("Failed to connect to port {}".format(port))
             return False
-
-        self.sendCmd("u={}".format(self.units))
-        self.sendCmd("sa=0")
+        except serial.SerialTimeoutException:
+            return False
 
         return True
 
@@ -47,15 +76,13 @@ class Fluke1502A:
     # Raw serial write - use method sendCmd unless you want to send an exact set of bytes
     def _send(self, bytes):
 
-        try:
-            self.conn.write(bytes)
-        except serial.SerialTimeoutException:
-            self.error("Serial write timed out")
+        self.conn.write(bytes)
 
     # Receive response from device
     # Waits up to TIMEOUT_INIT for first byte of response, and then
     # waits TIMEOUT_CONSECUTIVE between each remaining byte of response.
     # This method returns faster than using a single timeout to wait for the full response
+    # Returns result as list of strings, each string being one line of the response
     def _recv_all(self):
         res = ""
         originalTimeout   = self.conn.timeout
@@ -138,7 +165,7 @@ if __name__ == "__main__":
     import time
 
     fluke = Fluke1502A()
-    if not fluke.connect("COM4"):
+    if not fluke.connect():
         print "Failed to connect to Fluke1502A"
         exit(1)
 
