@@ -1,5 +1,6 @@
 import datetime
 import math
+import smtplib
 import sys
 import time
 
@@ -43,27 +44,31 @@ class EquilibriumMonitor():
 
         self.size     = size
         self.readings = RingBuffer(size)
-        self.STDs     = [0] * size
+        self.STDs     = [99.0] * size
         self.count    = 0
         self.name     = name
+        self.nReadings = 0
 
     def update(self, value):
         self.readings.update(value)
         std = self.readings.getSTD()
+        self.nReadings += 1
 
-        self.count += 1
+        if self.nReadings >= self.size:
+            self.count += 1
+            if std < min(self.STDs):
+                self._print("converging")
+                self.minSTD = std
+                self.count  = 0
 
-        if std < min(self.STDs):
-            self._print("converging")
-            self.minSTD = std
-            self.count  = 0
+            elif std > max(self.STDs) * 1.025:
+                self._print("diverging")
+                self.count  = 0
 
-        elif std > max(self.STDs) * 1.025:
-            self._print("diverging")
-            self.count  = 0
-
-        elif self.count < self.size:
-            self._print("stabilizing")
+            elif self.count < self.size:
+                self._print("stabilizing")
+        else:
+            self._print("need more readings")
 
         self.STDs = self.STDs[1:] + [std]
 
@@ -74,11 +79,14 @@ class EquilibriumMonitor():
         self.count = 0
 
     def _print(self, msg):
-        print "{} {} [{}/{}]".format(self.name.rjust(8), msg, self.count, self.size)
+        val = self.count
+        if self.nReadings < self.size:
+            val = self.nReadings
+        print "{} {} [{}/{}]".format(self.name.rjust(8), msg, val, self.size)
 
 class Controller():
 
-    COMMANDS  = ["wait", "hold", "ramp", "set", "stop"]
+    COMMANDS  = ["wait", "hold", "ramp", "set", "stop", "loggeron", "loggeroff"]
     DEBUG     = True
 
     TEMP_MAX  = 50
@@ -90,14 +98,17 @@ class Controller():
     SET   = 3
     STOP  = 4
     GO    = 5
+    LOGGERON = 6
+    LOGGEROFF = 7
 
-    STATES = ["RAMP", "HOLD", "WAIT", "SET", "STOP", "GO"]
+    STATES = ["RAMP", "HOLD", "WAIT", "SET", "STOP", "GO", "LOGGERON", "LOGGEROFF"]
 
     def __init__(self):
 
         self.sampleInterval = 5
         self.bufferSize     = 30
         self.stdHoldCount   = 30
+        self.doLogging      = True
 
         self.daq   = None
         self.bath  = None
@@ -121,6 +132,7 @@ class Controller():
         self.holdTime  = 0.0
         self.setpoint  = 0.0
         self.t0        = 0
+        self.epoch     = 0
 
     def connect(self):
 
@@ -134,13 +146,16 @@ class Controller():
                 return False
             self.daq.initialize(Keysight34972A.MODE_RESISTANCE, self.sensorList)
 
-        if not self.bath.connect("COM5"):
+        if not self.bath.connect():
             print "Failed to connect to Fluke7341 (Calibration Bath)"
             return False
 
-        if not self.probe.connect("COM7"):
+        if not self.probe.connect():
             print "Failed to connect to Fluke1502A (Probe Reader)"
             return False
+
+        self.epoch = time.time()
+        self.t0    = time.time()
 
         return True
 
@@ -159,8 +174,10 @@ class Controller():
 
         timestamp = datetime.datetime.now().isoformat().split('.')[0].replace(':', '-')
         self.file = "{}.csv".format(timestamp)
-
-        self.t0 = time.time()
+        f = open(self.file, "a")
+        f.write("Timestamp,Elapsed Time,Setpoint,Bath Temp,Probe Temp,{}\n".format(
+            ",".join(["r{}".format(i) for i in range(self.numSensors)])))
+        f.close()
 
     def validateCommand(self, command):
 
@@ -179,6 +196,16 @@ class Controller():
         elif com == "wait":
             if len(args) > 0:
                 self.error("WAIT requires 0 arguments")
+                return False
+
+        elif com == "loggeron":
+            if len(args) > 0:
+                self.error("LOGGERON requires 0 arguments")
+                return False
+
+        elif com == "loggeroff":
+            if len(args) > 0:
+                self.error("LOGGEROFF requires 0 arguments")
                 return False
 
         elif com == "hold":
@@ -306,6 +333,12 @@ class Controller():
             self.state    = self.SET
         elif action == "stop":
             self.state = self.STOP
+        elif action == "loggeroff":
+            self.doLogging = False
+            self.state = self.LOGGEROFF
+        elif action == "loggeron":
+            self.doLogging = True
+            self.state = self.LOGGERON
         else:
             self.error("UNKOWN COMMAND: {}".format(action))
             self.state = self.STOP
@@ -344,6 +377,10 @@ class Controller():
 
             if   self.state == self.GO:
                 self.nextState()
+            elif self.state == self.LOGGERON:
+                self.nextState()
+            elif self.state == self.LOGGEROFF:
+                self.nextState()
 
             elif self.state == self.HOLD:
                 if self.t0 > self.holdTime:
@@ -375,11 +412,11 @@ class Controller():
         self.disconnect()
 
     def step(self):
-
+        elapsedTime = datetime.datetime.now() - datetime.datetime.fromtimestamp(self.epoch)
         # make new readings and update appropriate buffers
         bathTemp    = float(self.bath.readTemp())
         probeTemp   = float(self.probe.readTemp())
-        
+
         resistances = []
         if self.numSensors > 0:
             resistances = self.daq.readValues()
@@ -390,23 +427,23 @@ class Controller():
             self.sensorBuffers[i].update(resistances[i])
 
         # log results
-        t = datetime.datetime.now()
-        timestamp   = "{}/{}/{} {}:{}:{}".format(t.month, t.day, t.year, t.hour, t.minute, t.second)
+        if self.doLogging:
+            t = datetime.datetime.now()
+            timestamp   = "{}/{}/{} {}:{}:{}".format(t.month, t.day, t.year, t.hour, t.minute, t.second)
 
-        t = datetime.datetime.now() - datetime.datetime.fromtimestamp(self.t0)
-        seconds =  t.seconds %    60
-        minutes = (t.seconds /    60) % 60
-        hours   = (t.seconds /  3600) % 24
-        elapsedTime   = "{}:{}:{}".format(hours, minutes, seconds)
+            seconds =  elapsedTime.seconds %    60
+            minutes = (elapsedTime.seconds /    60) % 60
+            hours   = (elapsedTime.seconds /  3600) % 24
+            elapsedTime   = "{}:{}:{}".format(hours, minutes, seconds)
 
-        output = open(self.file, "a")
-        resistances = ",".join([str(r) for r in resistances])
-        output.write(",".join([timestamp, elapsedTime, str(self.setpoint),
-                                  str(bathTemp), str(probeTemp), resistances]))
-        output.write("\n")
-        output.close()
+            output = open(self.file, "a")
+            resistances = ",".join([str(r) for r in resistances])
+            output.write(",".join([timestamp, elapsedTime, str(self.setpoint),
+                                    str(bathTemp), str(probeTemp), resistances]))
+            output.write("\n")
+            output.close()
 
-        # wait until next measurement interval
+            # wait until next measurement interval
         while time.time() < self.t0 + self.sampleInterval:
             time.sleep(0.01)
 
@@ -434,12 +471,27 @@ if __name__ == "__main__":
     c = Controller()
 
     c.runProgram("""
+    LOGGEROFF
     SET 0
+    WAIT
+    LOGGERON
     HOLD 1800
     """)
 
     c.disconnect()
 
+    # send notification email
+    if len(sys.argv) > 1:
+        f = open("credentials.txt", "r")
+        senderEmail, password = f.read().split(',')
+
+        targetEmail = sys.argv[1]
+        s = smtplib.SMTP('smtp.gmail.com', 587)
+        s.ehlo()
+        s.starttls()
+        s.login(senderEmail, password)
+        s.sendmail(senderEmail, targetEmail, 'Subject: Experiment Complete\nFile: {}'.format(c.file))
+        s.quit()
     exit()
 
     #test code
