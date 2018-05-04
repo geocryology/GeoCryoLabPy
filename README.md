@@ -1,5 +1,5 @@
 # GeoCryoLabPy
-Python code for automating geocryology laboratory 
+Python code for automating geocryology laboratory
 
 # Class files for various lab instruments
 
@@ -17,11 +17,34 @@ The thermometer readout uses a Serial connection (9600 BAUD, RTS/CTS enabled). I
 
 The calibration bath also uses a Serial connection (2400 BAUD, RTS/CTS enabled). It has a very similar set of methods as the thermometer readout.
 
+## LaudaRP845.py - Recirculating Bath
+
+Again, this uses a Serial connection (9600 BAUD), but it has a different set of commands compared to the previous devices.
+
 ## Keysight34972A.py - Data Acquisition Unit
 
 The DAQ uses a USB connecion, and follows the SCPI convention for communication. This is generally used for measuring thermistors, and contains several configuration parameters depending on the type of thermistors you wish to measure.
 
 # Measurement Scripts
+
+## logDAQ.py
+
+logDAQ.py is used for measuring thermistors while controlling the calibration bath. The 1502A is used as a more precise reference thermometer for said logging. This script supports a large host of command line arguments for tweaking behavior.
+
+    -h, --help           show this help message and exit
+    --start START        Initial bath temperature (default: 5)
+    --end END            Final bath temperature (default: -2)
+    --reset RESET        Bath will reset to this temperature after experiment(default: 20)
+    --inc INC            Temperature increment between setpoints (default: 1)
+    --nreads NREADS      Number of times to read from DAQ at each setpoint (default: 10)
+    --tdelay TDELAY      Time (s) to wait between setpoints (default: 1200)
+    --rdelay RDELAY      Time (s) to wait between subsequent DAQ reads (default:15)
+    --idelay IDELAY      Time (s) to wait for adjustment to initial setpoint. This delay is only used once at the start of the experiment (default: 1200)
+    --channels CHANNELS  List of DAQ channels to read, see code for detailed documentation on format (default: 101:120,201:220,301:320)
+    --filename FILENAME  Filename of output csv file (.csv extention added automatically) (default: None)
+    --eta                Print estimated time and exit without running experiment (default: False)
+    --email EMAIL        Send results to this email (default: )
+    --subject SUBJECT    Email subject line (default: Experiment Complete)
 
 ## Controller.py
 
@@ -38,7 +61,7 @@ RAMP will set the initial setpoint to 'start', and then issue a WAIT command. On
 
     HOLD t
 This is like WAIT, but waits for an explicit time interval, t, rather than waiting for equilibrium. The program will move to the next command after t seconds, regardless of whether the temperatures have stabilized or not.
-    
+
     STOP
 This command will terminate the program. All measurements will cease and results will be logged.
 
