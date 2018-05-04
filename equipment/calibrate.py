@@ -24,3 +24,6 @@ a_new  = a  * (1 + ((1 + a * sH) * eL - (1 + a * sL) * eH) / (sH - sL))
 
 print r0_new
 print a_new
+
+# r0_new = 100.060066041
+# a_new  = 0.00385192261085
