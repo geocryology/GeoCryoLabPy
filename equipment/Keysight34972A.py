@@ -29,12 +29,14 @@ class Keysight34972A():
     def connect(self):
 
         self.instance = self.rm.open_resource(self.ADDRESS)
-        id = (self._query("*IDN?"))
-        if id != self.ID:
+        idn = (self._query("*IDN?"))
+        if idn != self.ID:
             print "ID discrepancy:"
             print "expected:", self.ID
-            print "actual:  ", id
+            print "actual:  ", idn
             return False
+
+        self.instance.timeout = 15000
 
         #self.instance.timeout = None
         self._write("*RST")
@@ -69,7 +71,10 @@ class Keysight34972A():
 
         # convert list of probes to a scan list string
         probeString = ",".join(scanList)
-        print probeString
+        probeString = "101:122,201:222,301:322"
+        probeString = "101:120,201"
+        probeString = "201:220,301:320"
+
 
         self._write("format:reading:channel 1;alarm 1;unit 1;time:type rel")
         if mode == self.MODE_TEMPERATURE:
@@ -79,10 +84,14 @@ class Keysight34972A():
         self._write("trigger:count 1")
 
     # read a float value from each sensor in scanList, returned as a list
-    def readValues(self):
+    def readValues(self, probeList):
         self._write("initiate")
         temps = self._query("fetch?").split(',')
-        return [float(temp) for temp in temps]
+        return temps
+
+    def readResistances(self, probeList):
+        res = self._query("measure:resistance? (@{})".format(probeList))
+        return map(float, [temp for temp in res.split(',')])
 
     # read float values for each sensor, but return it in a dict format, ex:
     # {"1": 20.1, "2": 32.5, "4": 30.6}
@@ -103,14 +112,25 @@ if __name__ == "__main__":
     keysight = Keysight34972A()
 
     if not keysight.connect():
-        print "Failed to connect to Keysight34972A".format()
+        print "Failed to connect to Keysight34972A"
         exit(1)
+
+    t0 = time.time()
+    for probeList in ["101:120", "201:220","301:320"]:
+
+        res = keysight._query("measure:resistance? (@{})".format(probeList))
+        print map(float, [temp for temp in res.split(',')])
+    print time.time() - t0
+    exit(1)
+
 
     keysight.initialize(keysight.MODE_RESISTANCE, [1, 2])
 
+    t0 = time.time()
     print keysight.readValues()
+    print time.time() - t0
 
-    print keysight.readValuesDict()
+    #print keysight.readValuesDict()
 
 
     keysight.disconnect()
