@@ -1,4 +1,5 @@
 import serial
+import configparser
 
 # Class for Fluke 7341 Calibration Bath with Serial Interface
 #   - Reads and writes are slow on this device (max 2400 BAUD)
@@ -25,8 +26,12 @@ class Fluke7341:
     # port must be a string in the form COM* where * is one or more digits - ex. "COM7" or "COM12"
     def connect(self, port=0, baud=2400, timeout=2.0):
 
+        cfg  = configparser.ConfigParser()
+        cfg.read("lab.cfg")
+
         if port == 0: # default, no port specified
-            portList = range(1, 12)
+            port = cfg["Fluke7341"].getint("Port")
+            portList = [port] + range(1, 12)
         else:
             portList = [port]
 
@@ -40,6 +45,9 @@ class Fluke7341:
                 if len(res) > 0:
                     if "ver.7341,1.08" in res[0]:
                         print "  Correctly identified as Fluke 7431"
+                        cfg["Fluke7341"]["Port"] = str(p)
+                        with open("lab.cfg", "w") as cfgFile:
+                            cfg.write(cfgFile)
                         return True
                     else:
                         print "  Failed to identify as Fluke 7431"

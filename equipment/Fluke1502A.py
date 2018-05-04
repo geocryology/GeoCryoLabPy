@@ -1,7 +1,10 @@
 import serial
+import configparser
 
 # Class for Fluke 1502A Probe reader with Serial Interface
 #   - Serial interface should be configured to 9600 BAUD, Full Duplex
+
+
 
 class Fluke1502A:
 
@@ -19,8 +22,12 @@ class Fluke1502A:
     # use a value of 0 (default) for the port to try auto-detection of the port)
     def connect(self, port=0, baud=9600, timeout=2.0):
 
+        cfg  = configparser.ConfigParser()
+        cfg.read("lab.cfg")
+
         if port == 0: # default, no port specified
-            portList = range(1, 12)
+            port = cfg["Fluke1502A"].getint("Port")
+            portList = [port] + range(1, 12)
         else:
             portList = [port]
 
@@ -34,6 +41,10 @@ class Fluke1502A:
                 if len(res) > 0:
                     if "HART,1502A" in res[0]:
                         print "  Correctly identified as Fluke 1502A"
+                        cfg["Fluke1502A"]["Port"] = str(p)
+                        with open("lab.cfg", "w") as cfgFile:
+                            cfg.write(cfgFile)
+                        return True
                         return True
                     else:
                         print "  Failed to identify as Fluke 1502A"
