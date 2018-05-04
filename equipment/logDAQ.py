@@ -198,7 +198,7 @@ daq.disconnect()
 
 if args.email:
     cfg  = configparser.ConfigParser()
-        cfg.read("lab.cfg")
+    cfg.read("lab.cfg")
     fromEmail = cfg["Email"]["address"]
     fromPass  = cfg["Email"]["password"]
     e = Emailer(fromEmail, fromPass)
