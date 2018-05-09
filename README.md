@@ -4,6 +4,14 @@ Python code for automating geocryology laboratory
 # Class files for various lab instruments
 
 Many pieces of lab equipment have a Python class designed to easily facilitate connection and communication. They should be straightforward to use and all follow a similar protocol:
+1. Connect to the device using the connect() function which will automatically detect port numbers
+2. Send any required configuration commands (for example LaudaRP845.setControlMode(2) to enable external thermometer control)
+3. Read any data and log to file (for example Fluke1502A.readTemp() to get the temperature of the calibration bath, measured externally)
+
+There are several pre-built logging scripts described in the next section, but in case of designing your own, a typical script will behave something like this:
+1. Connect to all needed devices
+2. Send configuration data if necessary
+3. In a loop, continuously read data and if necessary update configurations (like bath temperature)
 
 ## Agilent4395A.py - Frequency Response Analyzer
 
