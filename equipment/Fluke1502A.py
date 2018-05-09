@@ -27,7 +27,7 @@ class Fluke1502A:
 
         if port == 0: # default, no port specified
             port = cfg["Fluke1502A"].getint("Port")
-            portList = [port] + range(1, 12)
+            portList = [port] + range(1, 13)
         else:
             portList = [port]
 
@@ -44,7 +44,6 @@ class Fluke1502A:
                         cfg["Fluke1502A"]["Port"] = str(p)
                         with open("lab.cfg", "w") as cfgFile:
                             cfg.write(cfgFile)
-                        return True
                         return True
                     else:
                         print "  Failed to identify as Fluke 1502A"

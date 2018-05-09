@@ -31,7 +31,7 @@ class Fluke7341:
 
         if port == 0: # default, no port specified
             port = cfg["Fluke7341"].getint("Port")
-            portList = [port] + range(1, 12)
+            portList = [port] + range(1, 13)
         else:
             portList = [port]
 
@@ -40,7 +40,7 @@ class Fluke7341:
             if self.tryPort(p, baud, timeout):
                 print "Connected"
 
-                # we connected to something, now request identifier to verify it is the 1502A
+                # we connected to something, now request identifier to verify it is the 7341
                 res = self.sendCmd("*VER")
                 if len(res) > 0:
                     if "ver.7341,1.08" in res[0]:
