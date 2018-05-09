@@ -1,5 +1,6 @@
 # GeoCryoLabPy
 Python code for automating geocryology laboratory
+Files located in C:\git\GeoCryoLabPy\equipment
 
 # Class files for various lab instruments
 
@@ -12,6 +13,7 @@ There are several pre-built logging scripts described in the next section, but i
 1. Connect to all needed devices
 2. Send configuration data if necessary
 3. In a loop, continuously read data and if necessary update configurations (like bath temperature)
+4. At the end of the script, disconnect from all devices. This will usually happen automatically, but it is a good habit to call disconnect() when finished with a device.
 
 ## Agilent4395A.py - Frequency Response Analyzer
 
@@ -19,16 +21,42 @@ Supports writing configuration commands (see list of useful commands in analyzer
 
 ## Fluke1502A.py - Thermometer Readout
 
-The thermometer readout uses a Serial connection (9600 BAUD, RTS/CTS enabled). It contains methods for reading and writing configuration data and reading temperature measurements.
+The thermometer readout uses a Serial connection (9600 BAUD, RTS/CTS enabled). It contains methods for reading and writing configuration data and reading temperature measurements. If a function is not listed below, it is only meant for internal use.
+    
+    connect(): Scans all COM ports and requests identifier to find and connect to Fluke1502A.
+    disconnect(): To be called when all communications are finished, typically at the end of a script.
+    sendCmd(): Send command as a string, for example "t" to read the temperature. The devices response is returned. 
+               Most common commands have dedicated functions, so this should only be used if there is no 
+               function implemented for the command you need.
+    readTemp(): Read temperature of thermometer, returned as a string.
+    setUnits(): Change measurement units (C (default), F, or K)
+    getValue(): Get a specific value, such as probe type or calibration parameters
+    printCalibrationData(): Retrieve and print all calibration parameters
+    printModelInfo(): Print model number and ID string
 
 ## Fluke7341.py - Calibration Bath
 
-The calibration bath also uses a Serial connection (2400 BAUD, RTS/CTS enabled). It has a very similar set of methods as the thermometer readout.
+The calibration bath also uses a Serial connection (2400 BAUD, RTS/CTS enabled). It has a very similar set of methods as the thermometer readout. The functions for this are nearly identical to the Fluke1502, so refer to the above list.
 
 ## LaudaRP845.py - Recirculating Bath
 
-Again, this uses a Serial connection (9600 BAUD), but it has a different set of commands compared to the previous devices.
-
+Again, this uses a Serial connection (9600 BAUD), but it has the following additional commands compared to the previous devices.
+    
+    setCoolingMode(): 0 - No cooling
+                      1 - Forced cooling
+                      2 - Automatic (default, used for maintaining a setpoint)
+    setControlMode(): 0 - Internal thermometer control
+                      1 - External thermometer control (for use with external pt100 sensor)
+                      2 - External analogue controller
+                      3 - External serial controller
+    setSetpoint(): Set bath setpoint
+    setPumpLevel(): Strength of circulating pump (from 1-8, default 4)
+    getBathTemp(): Read bath temperature, returned as float
+    getExtTemp(): Read temperature of external pt100 probe
+    getBathLevel(): Get fill level of bath
+    getSetpoint(): Read current setpoint
+    getPumpLevel(): Read pump level    
+    
 ## Keysight34972A.py - Data Acquisition Unit
 
 The DAQ uses a USB connecion, and follows the SCPI convention for communication. This is generally used for measuring thermistors, and contains several configuration parameters depending on the type of thermistors you wish to measure.
