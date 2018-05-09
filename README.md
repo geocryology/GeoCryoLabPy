@@ -3,7 +3,7 @@ Python code for automating geocryology laboratory
 
 # Class files for various lab instruments
 
-You generally won't have to use these class files directly unless you are building your own script which uses them. There are already a few scripts built which take care of configuration/measurement which are described in the next section.
+Many pieces of lab equipment have a Python class designed to easily facilitate connection and communication. They should be straightforward to use and all follow a similar protocol:
 
 ## Agilent4395A.py - Frequency Response Analyzer
 
