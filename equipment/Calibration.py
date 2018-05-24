@@ -55,23 +55,27 @@ stats = []           # List for stats csv
 for x in range(0, len(xdata)):
     # Fitting curve
     popt, pcov = curve_fit(func, xdata[x], ydata, bounds=(0, [1.0e-1, 1.0e-2, 1.0e-4, 1.0e-5]))  # popt is the parameter values and pvoc is the vovariance matrix
-    # Calculating uncertainties
-    a, b, c, d = unc.correlated_values(popt, pcov)     # Calculates +/- uncertainty of parameters using sqrt of diagonal of pcov
+   
+   # Calculating uncertainties
+    a, b, c, d = unc.correlated_values(popt, pcov)     # Calculates +/- uncertainty of parameters using sqrt of diagonal of pcov. http://scipyscriptrepo.com/wp/?p=104
     py = 1/(a + b * unp.log(xdata[x]) + c * (unp.log(xdata[x]))**2 + d * (unp.log(xdata[x]))**3)   # calculates the temp with uncertainties for every temp step
     nom = unp.nominal_values(py)        # Creates array of temp value at each temp step
     std = unp.std_devs(py)              # Creates array of uncertainty (1 standard deviation) at each temp step
     std_mma = [median(std *3.92), max(std)*3.92, min(std)*3.92]  # Calculates mode, max and min of the uncertainties over all temps of thermistor for csv file
+    
     # Calculating residuals
     dif = func(xdata[x], *popt) - ydata   # Calculates difference between curve and data points
     dif_mma = [np.mean(abs(dif)), max(dif), min(dif)]    # Calculates mean, max and min residual over the temp range of a thermistor for csv file
     # Calculate standard uncertainty (1.96 sigma: 95%, 1.65 sigma: 90%)
     cov = np.sqrt(np.diag(pcov)) * 1.96  # Not used anymore as unc.correlated_values does this. But still used for stats csv
+    
     # Prepare data for stats csv
     stat = [time[x]] + [names[x]] + list(popt) + list(cov) + list(std_mma) + list(dif_mma)   
     stats.append(stat)
     # Prepare data for results csv
     tab = [time[x]] + [names[x]] + list(popt) + [std_mma[0], dif_mma[0]] 
     par.append(tab)
+    
     ## PLOTTING
     # Plot Curves and points
     plt.subplot(311)
