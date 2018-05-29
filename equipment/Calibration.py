@@ -1,7 +1,7 @@
 # Input: ***_avg csv file outputted by calibration code 
 
 # Creates a results csv file like: | Therm name | date of calibration | a | b | c | d | Mode uncertainty | Avg residual
-# Creates a statistics csv file
+# Creates a stats csv file with additional error and uncertainty info
 # Creates a figure with - a plot of temp vs res points and fitted curves
 #                       - a plot with residual errors
 #                       - a plot of fitted curve uncertainties over temperature range
@@ -18,8 +18,8 @@ import uncertainties.unumpy as unp
 import pandas as pd 
 
 # Input
-dir = 'C:/Users/estew/Documents/2018SummerStephan/CalibFiles/'   # Directory of input csv and where outputted csv files will go
-file = '2018-05-23T13_54_10_avg.csv'                             # Name of input csv file
+dir = ''   # Directory of input csv and where outputted csv files will go
+file = ''                             # Name of input csv file
 point = "0.0"
 
 # Define function to fit 
@@ -32,24 +32,24 @@ ThermRes = table.iloc[:, 4:]
         
 # Prepares data for plotting
 ind = table[table['Setpoint']==0.0].index.values.astype(int)[0]
-# preparing thermistor resistance data (xdata)
+
 xdata = []
 for therm in ThermRes:
-    res = ThermRes[therm]             #map(float, ThermRes[therm])
-    res = [i/res[ind] for i in res]   # Resistance divided by resistance at 25 degrees C
+    res = ThermRes[therm]            
+    res = [i/res[ind] for i in res]   # Resistance divided by resistance at 0 degrees C
     xdata.append(res)
 
-# preparing probe temperature data (ydata)
-ydata = table['ProbeTemp']         # Probe temperature is the y axis data
+ydata = table['ProbeTemp']         
 ydata = [i+273.15 for i in ydata]      # Convert celcius to kelvin
 
-# Fit curves to function, calculates uncertainties, residuals and prepares plots
+# Fit curves to function, calculates uncertainties, residuals, prepare plots
 results = pd.DataFrame()
-stats = pd.DataFrame()           # Create empty pandas dataframe
+stats = pd.DataFrame()           
+
 for i in range(0, len(xdata)):
     x = xdata[i]
     # Fitting curve
-    popt, pcov = curve_fit(func, x, ydata, bounds=(0, [1.0e-1, 1.0e-2, 1.0e-4, 1.0e-5]))  # popt is the parameter values and pvoc is the vovariance matrix
+    popt, pcov = curve_fit(func, x, ydata, bounds=(0, [1.0e-1, 1.0e-2, 1.0e-4, 1.0e-5]))  # popt is the parameter values and pvoc is the covariance matrix
     
     # Calculating uncertainties
     a, b, c, d = unc.correlated_values(popt, pcov)     # Calculates +/- uncertainty of parameters using sqrt of diagonal of pcov. http://scipyscriptrepo.com/wp/?p=104
@@ -61,6 +61,7 @@ for i in range(0, len(xdata)):
     # Calculating residuals
     dif = func(x, *popt) - ydata   # Calculates difference between curve and data points
     dif_mma = [np.mean(abs(dif)), max(dif), min(dif)]    # Calculates mean, max and min residual over the temp range of a thermistor for csv file
+    
     # Calculate standard uncertainty (1.96 sigma: 95%, 1.65 sigma: 90%)
     cov = np.sqrt(np.diag(pcov)) * 1.96  # Not used anymore as unc.correlated_values does this. But still used for stats csv
 
@@ -104,6 +105,6 @@ stats.to_csv(dir + 'stats.csv', index = False)
     
 # Plot data and save file
 plt.tight_layout()
-plt.savefig('Plot.pdf')
+plt.savefig(dir + 'Plot.pdf')
 plt.show()
  
