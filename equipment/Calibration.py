@@ -1,6 +1,6 @@
 # Input: ***_avg csv file outputted by calibration code 
 
-# Creates a results csv file like: | Therm name | date of calibration | a | b | c | d | Mode uncertainty | Avg residual
+# Creates a results csv file 
 # Creates a stats csv file with additional error and uncertainty info
 # Creates a figure with - a plot of temp vs res points and fitted curves
 #                       - a plot with residual errors
@@ -18,7 +18,7 @@ import uncertainties.unumpy as unp
 import pandas as pd 
 
 # Input
-dir = ''   # Directory of input csv and where outputted csv files will go
+dir = ''                              # Directory of input csv and where outputted csv files will go
 file = ''                             # Name of input csv file
 point = "0.0"
 
@@ -69,13 +69,13 @@ for i in range(0, len(xdata)):
     result = pd.DataFrame({'Date': [table["Time"][0][:10]], 
                         'Thermistor': [ThermRes.columns.values[i]],
                         'a': popt[0], 'b': popt[1], 'c': popt[2], 'd': popt[3],
-                        'std_median': std_mma[0], 'err_avg': dif_mma[0]})
+                        'uncert_a': cov[0], 'uncert_b': cov[1], 'uncert_c': cov[2], 'uncert_d': cov[3]})
     results = results.append(result, ignore_index=True)
     # Prepare data for stats csv
     stat = pd.DataFrame({'Date': [table["Time"][0][:10]], 
                         'Thermistor': [ThermRes.columns.values[i]],
                         'a': popt[0], 'b': popt[1], 'c': popt[2], 'd': popt[3],
-                        'stu_a': cov[0], 'stu_b': cov[1], 'stu_c': cov[2], 'stu_d': cov[3],
+                        'uncert_a': cov[0], 'uncert_b': cov[1], 'uncert_c': cov[2], 'uncert_d': cov[3],
                         'std_median': std_mma[0], 'std_max': std_mma[1], 'std_min': std_mma[2],
                         'err_avg': dif_mma[0], 'err_max': std_mma[1], 'err_min': std_mma[2]})
     stats = stats.append(stat, ignore_index=True)
@@ -83,13 +83,12 @@ for i in range(0, len(xdata)):
     ## PLOTTING
     # Plot Curves and points
     plt.subplot(311)
-    plt.plot(x, func(x, *popt), 'g-')
-    plt.ylabel('Temperature (k)')
-    plt.plot(x, ydata, 'c.', markersize = 1)
+    plt.plot(func(x, *popt), x, 'g-')
+    plt.ylabel('Rt/R0')
+    plt.plot(ydata, x, 'c.', markersize = 1)
     # Plotting residuals
     plt.subplot(312)
-    plt.plot(x, dif, 'r.', markersize = 2)
-    plt.xlabel('Rt/R0')
+    plt.plot(ydata, dif, 'r.', markersize = 2)
     plt.ylabel('Error (K)') 
     # Plot T uncertainty over T range
     plt.subplot(313)
@@ -107,4 +106,7 @@ stats.to_csv(dir + 'stats.csv', index = False)
 plt.tight_layout()
 plt.savefig(dir + 'Plot.pdf')
 plt.show()
+
+
+
  
