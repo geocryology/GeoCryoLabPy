@@ -1,6 +1,7 @@
 import configparser
 import re
 import serial
+from numpy import diff, concatenate
 
 # Class for LAUDA RP 845 Recirculating Bath with Serial Interface
 #   - Temperatures are read in Celsius
@@ -16,7 +17,7 @@ class LaudaRP845:
     # Setpoint Min/Max values are in Celsius
     # These values are safety constraints, they can be changed as necessary
     SETPOINT_MAX        =  50
-    SETPOINT_MIN        = -25
+    SETPOINT_MIN        =  2 #[NB] changed to 2 deg for now until there is glycol in the bath
 
     ERRORS              = {
         "2":  "Wrong input",
@@ -215,14 +216,138 @@ class LaudaRP845:
             self.warning("Pump level must be in range [1, 8]")
             return False
 
-        # convert to
+        # convert to string
         level = "{:03d}".format(level)
         res = self.sendCmd("out sp 01 {}".format(level))[0]
         if "OK" in res:
-            self.info("Pump level changed to {} C".format(level))
+            self.info("Pump level changed to {}".format(level))
             return True
 
         return False
+
+    def setProgram(self, program):
+        """Select one of the 5 programmable temperature-time profiles"""
+        if not (1 <= program <= 5 and isinstance(program, int)):
+            self.warning("Program {:0d} not set. Choose an integer between 1 and 5".format(program))
+
+        res = self.sendCmd("rmp select {}".format(program))[0].strip()
+
+        if "OK" in res:
+            self.info("Program {:0d} has been selected".format(program))
+            return True
+
+        return False
+
+    def setProgramSegment(self, temp, time, tol, pump=8, start=False):
+        """Append a segment to the currently selected program"""
+        if temp > self.SETPOINT_MAX:
+            self.warning("Setpoint '{}' too high, max = {}. Segment not added.".format(temp, self.SETPOINT_MAX))
+            return False
+
+        if temp < self.SETPOINT_MIN:
+            self.warning("Setpoint '{}' too low, min = {}. Segment not added.".format(temp, self.SETPOINT_MIN))
+            return False
+
+        # convert values to strings in appropriate format
+        temp = "{:3.2f}".format(temp)
+        time = "{:05d}".format(time)
+        tol = "{:3.2f}".format(tol)
+        pump = "{:01d}".format(pump)
+
+        program = int(self.getCurrentProgram())
+        res = self.sendCmd("rmp out 00 {} {} {} {}".format(temp, time, tol, pump))[0].strip()
+
+        if "OK" in res:
+            self.info("Segment appended to program {:0d}".format(program))
+            return True
+
+        return False
+
+    def setProgramRepetitions(self, reps):
+        """Set the number of times the program runs (0 - 250) 0 = unlimited"""
+        if not 0 <= reps <= 250:
+                self.error("Choose between 0 and 250 repetitions")
+
+        n =  "{:03d}".format(reps)
+        program = int(self.getCurrentProgram())
+        res = self.sendCmd("rmp out 02 {}".format(n))
+
+        if "OK" in res:
+            self.info("Program {:0d} will run {} times".format(program, re.sub('^0$', 'infinitely many', n)))
+            return True
+
+        return False
+
+    def setProgramFunction(self, program, f_temp, stop, step, reps = 1, f_pump = None, f_tol = None):
+        """
+        Defines a program (temperature-time profile) based on the values of a function
+
+        Args:
+            f_temp (function): a function f(x) defined on the closed interval [0, stop] that
+            returns a temperature value for any x in its domain where x is measured in minutes
+            stop (int): for how many minutes should the program run
+            step (int): time discretization of function in minutes (minimum 1 minute)
+            reps (int): how many times should the function repeat
+            program (int): Which program slot to save in?
+            f_pump (function): Optionally, a function g(x) that defines the pump level on [0, stop]
+            If not supplied, pump level will be set to a constant value equal to the current pump level
+
+        If using a sinusoidal function, ensure that the period is a multiple of
+        the step size to avoid aliasing problems
+        """
+        # erase the current program
+        self.setProgram(program)
+        self.deleteProgram()
+
+        # Use current pumplevel if no function is defined for it
+        if f_pump is None:
+            p = self.getPumpLevel()
+            f_pump = lambda x: p
+
+        # ensure bath achieves target temperature before starting
+        if f_tol is None:
+            f_tol = lambda x: 0.1 if x == 1 else 0
+
+        # Define each timstep. In the future, these don't have to be evenly spaced
+        times = range(0, stop + step, step)
+        intervals = concatenate([[0], diff(times)]) # interval for START is always 0
+        temps = [f_temp(t) for t in times]
+        tols = [f_tol(t) for t in times]
+        pumps = [f_pump(t) for t in times]
+
+        # Write program segment for each timestep
+        for (T, I, L, P) in zip(temps, intervals, tols, pumps):
+            self.setProgramSegment(T, I, L, P)
+        self.setProgramRepetitions(reps)
+        self.info("Program written")
+
+    def getProgramSegment(self, seg):
+        seg =  "{:03d}".format(seg)
+        res = self.sendCmd("rmp in 00 {}".format(seg))[0].strip()
+
+        if not re.match(r"ERR", res):
+            res = [float(x) for x in res.split('_')]
+            return res
+
+        return False
+
+    def getAllProgramSegments(self, program=None, nmax=150):
+        """Return a list of program segments for a specified program
+        If no program is specified, the current program is retrieved"""
+        if program is not None:
+            self.setProgram(program)
+
+        prg = []
+
+        for i in range(0, nmax):
+            res = self.getProgramSegment(i)
+            if res:
+                prg.append(res)
+            else:
+                break
+
+        return(prg)
+
 
     def getBathTemp(self):
         """Get temperature measured by internal sensor."""
@@ -249,6 +374,35 @@ class LaudaRP845:
         res = self.sendCmd("in sp 01")[0].strip()
         return int(float(res))
 
+    def getCurrentProgram(self):
+        res = self.sendCmd("rmp in 04")[0].strip()
+        return float(res)
+
+    def deleteProgram(self):
+        program = self.getCurrentProgram()
+        res = self.sendCmd("rmp reset")
+
+        if "OK" in res:
+            self.info("Program {} cleared".format(program))
+            return True
+
+        return False
+
+    def controlProgram(self, command):
+        """Control program execution ('start','stop','pause', 'cont')"""
+        if not command in ['start', 'stop', 'pause', 'cont']:
+            self.error("Command must be one of ('start', 'stop','pause', 'cont')")
+
+        program = self.getCurrentProgram()
+        res = self.sendCmd("rmp {}".format(command))
+
+        if "OK" in res:
+            self.info("Program {}: {}".format(program, command))
+            return True
+
+        return False
+
+
     # Prints info message
     def info(self, msg):
         print "[INFO] " + format(msg)
@@ -270,7 +424,7 @@ if __name__ == "__main__":
         print "Failed to connect to LaudaRP845"
         exit(1)
 
-    lauda.setSetpoint(12.34)
+    lauda.setSetpoint(19.5)
     print lauda.getBathTemp()
     #print lauda.getExtTemp()
     print lauda.getBathLevel()
@@ -278,6 +432,7 @@ if __name__ == "__main__":
     print lauda.getSetpoint()
 
     lauda.disconnect()
+
 
 
 
