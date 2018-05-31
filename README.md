@@ -56,6 +56,14 @@ Again, this uses a Serial connection (9600 BAUD), but it has the following addit
     getBathLevel(): Get fill level of bath
     getSetpoint(): Read current setpoint
     getPumpLevel(): Read pump level    
+    setProgram(): Select one of the 5 programmable temperature/time profiles
+    setProgramSegment(): Add one segment to the currently selected program
+    setProgramRepetitions(): Set how many times the program temperature cycle is to repeat
+    getProgramSegment(): Read the details of a specific programmed segment
+    getAllProgramSegments(): Read the details of an entire program
+    deleteProgram(): Clear all segments of currently selected program
+    getCurrentProgram(): Return the number (index) of the currenly selected program
+    controlProgram(): Control program behaviour (start, pause, resume, stop)
     
 ## Keysight34972A.py - Data Acquisition Unit
 
