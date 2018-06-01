@@ -33,7 +33,33 @@ class Thermistor(object):
         """
         calculates uncertainty on thermistor given 
         """
-        pass
+        if self.calibration[thermistor]:
+            C = self.calibration[thermistor]
+            keys = ['a','b','c','d', 'uncert_a', 'uncert_b', 'uncert_c', 'uncert_d', 'R0']
+            (a,b,c,d, uncert_a, uncert_b, uncert_c, uncert_d,R0) = [C[x] for x in keys]
+            Ts = np.array([
+                self.func(res, a + uncert_a, b + uncert_b, c + uncert_c, d + uncert_d, R0), 
+                self.func(res, a + uncert_a, b - uncert_b, c + uncert_c, d + uncert_d, R0),   
+                self.func(res, a + uncert_a, b + uncert_b, c - uncert_c, d + uncert_d, R0), 
+                self.func(res, a + uncert_a, b - uncert_b, c - uncert_c, d + uncert_d, R0), 
+                self.func(res, a - uncert_a, b + uncert_b, c + uncert_c, d + uncert_d, R0), 
+                self.func(res, a - uncert_a, b - uncert_b, c + uncert_c, d + uncert_d, R0),
+                self.func(res, a - uncert_a, b + uncert_b, c - uncert_c, d + uncert_d, R0), 
+                self.func(res, a - uncert_a, b - uncert_b, c - uncert_c, d + uncert_d, R0),
+                self.func(res, a + uncert_a, b + uncert_b, c + uncert_c, d - uncert_d, R0), 
+                self.func(res, a + uncert_a, b - uncert_b, c + uncert_c, d - uncert_d, R0),   
+                self.func(res, a + uncert_a, b + uncert_b, c - uncert_c, d - uncert_d, R0), 
+                self.func(res, a + uncert_a, b - uncert_b, c - uncert_c, d - uncert_d, R0), 
+                self.func(res, a - uncert_a, b + uncert_b, c + uncert_c, d - uncert_d, R0), 
+                self.func(res, a - uncert_a, b - uncert_b, c + uncert_c, d - uncert_d, R0),
+                self.func(res, a - uncert_a, b + uncert_b, c - uncert_c, d - uncert_d, R0), 
+                self.func(res, a - uncert_a, b - uncert_b, c - uncert_c, d - uncert_d, R0)
+                ])
+            T = [min(Ts), max(Ts)]
+            return T
+        else:
+            raise ValueError('thermistor not in calibration file') 
+       
 
     @staticmethod
     def func(R, a, b, c, d, R0): 
@@ -45,9 +71,4 @@ class Thermistor(object):
         x = R / R0
         T = 1 / (a + b * np.log(x) + c * np.log(x)**2 + d * np.log(x)**3)
         return T
-
-
-# T = Thermistor()
-# T.readCalibration('E:/NB/calib.csv')
-# T.calculateTemperature(42, 'T1')
 
