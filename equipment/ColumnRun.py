@@ -5,14 +5,17 @@ import time
 
 import numpy as np
 
-from LaudaRP845 import LaudaRP845
-from ColumnUtils import Thermistor
-from logDAQ import getChannels, getChannelName
+from LaudaRP845     import LaudaRP845
+from Keysight34972A import Keysight34972A
+from ColumnUtils    import Thermistor
+from logDAQ         import getChannels, getChannelName
+from itertools      import izip
+from pyEmail        import Emailer
 
-validChannels = range(101, 121) + range(201, 221) + range(301, 321)
 
 
 # Default settings
+validChannels = range(101, 121) + range(201, 221) + range(301, 321)
 channelList = []
 dflt_initDelay = 0
 
@@ -27,6 +30,8 @@ dflt_rep_up    =  1
 dflt_rep_up    =  1
 dflt_tstop_up  =  15
 dflt_tstop_low =  15
+dflt_disc_up   =  5
+dflt_disc_low  =  5
 
 dflt_rdelay      =  90 # seconds between DAQ readings
 
@@ -76,37 +81,42 @@ tstop_low = args.tstop_low
 disc_up = args.disc_up
 disc_low = args.disc_low
 
-channels     = getChannels(channelList)
-channelNames = {}
-for channel in sorted(channels):
-    channelNames[str(channel)] = getChannelName(channel)
+readDelay = args.rdelay
 
+if channelList:
+    channels     = getChannels(channelList)
+    channelNames = {}
+    for channel in sorted(channels):
+        channelNames[str(channel)] = getChannelName(channel)
+    thermistorNames = [channelNames[str(channel)] for channel in sorted(channels)]
 
 # Connect to instruments if they're needed
 connected = []
 
 if channelList:
+    daq = Keysight34972A()
     if not daq.connect():
         print("Failed to connect to DAQ")
         exit(1)
+    
     connected.append(daq)
 
 if up:
     bathUpper = LaudaRP845()
-
     if not bathUpper.connect(port=port_up):
         print("Failed to connect to upper bath")
         map(lambda x: x.disconnect(), connected)   
         exit(1)
+    
     connected.append(bathUpper)
 
 if low:
     bathLower = LaudaRP845()
-
     if not bathLower.connect(port=port_low):
         print("Failed to connect to lower bath")
         map(lambda x: x.disconnect(), connected)   
         exit(1)
+    
     connected.append(bathLower)  
 
 # Prepare bath programs
@@ -135,10 +145,20 @@ else:
     timestamp = datetime.datetime.now().isoformat().split('.')[0].replace(':', '_')
     filename  = "{}_ColumnRun".format(timestamp)
 
-for mode in ["res", "tmp"]:
-    output = open("{}_{}.csv".format(filename, mode), "w")
-    output.write("Timestamp,upperBathTemp,upperExtTemp,upperSetpoint,lowerBathTemp,lowerExtTemp,lowerSetpoint,{}\n".format(",".join([channelNames[str(channel)] for channel in sorted(channels)])))
-    output.close()
+
+# Write resistances file
+commonHdrs = 'Timestamp,upperBathTemp,upperExtTemp,lowerBathTemp,lowerExtTemp'
+output = open("{}_res.csv".format(filename), "w")
+output.write("{},{}\n".format(commonHdrs,",".join(thermistorNames)))
+output.close()
+
+# Write temperatures file
+upperLim = ['{}_upperlimit'.format(x) for x in thermistorNames]
+lowerLim = ['{}_lowerlimit'.format(x) for x in thermistorNames]
+headers = [val for triplet in izip(thermistorNames, upperLim, lowerLim) for val in triplet]
+output = open("{}_tmp.csv".format(filename), "w")
+output.write("{},{}\n".format(commonHdrs, ",".join(headers)))
+output.close()
 
 # Wait...
 if args.initDelay:
@@ -150,39 +170,51 @@ if up:
 if low:
     bathLower.controlProgram("start")
 
-duration = np.max()
+duration = np.max(tstop_up * rep_up, tstop_low * rep_low) * 60
+
 # Start recording
-    for t in __: 
-        t0 = time.time()
-        
-        # read and write DAQ
-        print "\r  Measuring DAQ [{}/{}]".format(i+1, nReads),
-        currentTime = datetime.datetime.now().isoformat()
-
-        # measure bath temps 
-        T_up, T_low, Text_up, Text_low = -999, -999, -999, -999
-        if up:
-            T_up = bathUpper.getBathTemp()
-            print('skipping external temperature for upper bath')
-        if low:
-            T_low = bathLower.getBathTemp()
-            print('skipping external temperature for lower bath')
+for t in range(0, duration + readDelay, readDelay): 
+    t0 = time.time()
+    currentTime = datetime.datetime.now().isoformat()
     
+    # read DAQ
+    if channelList:
+        print("Measuring DAQ")
+        daqVals   = daq.readResistances(channelList)
+        
+        daqValsTmp = [Therm.calculateTemperature(res, name) for (res, name) in izip(daqVals, thermistorNames)]
+        errMinus, errPlus = [Therm.calculateUncertainty(res, name) for (res, name) in izip(daqVals, thermistorNames)]
+        daqValsTmp = [val for triplet in izip(daqValsTmp, errMinus, errPlus) for val in triplet]
+        daqVals      = ",".join(map(str, daqVals))
+        daqValsTmp   = ",".join(map(str, daqValsTmp))
+    
+    # read bath temps 
+    T_up, T_low, Text_up, Text_low = -999, -999, -999, -999
+    if up:
+        T_up = bathUpper.getBathTemp()
+        print('skipping external temperature for upper bath')
+    if low:
+        T_low = bathLower.getBathTemp()
+        print('skipping external temperature for lower bath')
+
+    # write data (resistances)
+    with open("{}_res.csv".format(filename), "a") as output:
+        output.write("{},{},{},{},{},{}\n".format(currentTime,T_up,Text_up,T_low, Text_low, daqVals))
+
+     # write data (temperatures + uncertainties) 
+    with open("{}_tmp.csv".format(filename), "a") as output:
+        output.write("{},{},{},{},{},{}\n".format(currentTime,T_up,Text_up,T_low, Text_low, daqValsTmp))
+    
+    # wait until next measurement interval
     time.sleep(readDelay - (time.time() - t0))
-'''
-use nice argparse code from logDAQ
- --lower temperature file for lower plate
- --upper temperature file for upper plate
-  every n seconds:
-  get and write 
-
-
-# define upper and lower functions from args with eval
-str = '3*np.sin(t*np.pi/30)+15'
-f_up = lambda t: eval(str)
-
-kill subprocesses
-'''
 
 # disconnect connected devices
 map(lambda x: x.disconnect(), connected)
+
+if args.email:
+    cfg  = configparser.ConfigParser()
+    cfg.read("lab.cfg")
+    fromEmail = cfg["Email"]["address"]
+    fromPass  = cfg["Email"]["password"]
+    e = Emailer(fromEmail, fromPass)
+    e.send(args.email, args.subject, ["{}_{}.csv".format(filename, mode) for mode in ["res", "tmp"]])
