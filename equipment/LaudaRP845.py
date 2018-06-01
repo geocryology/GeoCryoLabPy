@@ -279,7 +279,7 @@ class LaudaRP845:
 
         return False
 
-    def setProgramFunction(self, program, f_temp, stop, step, reps = 1, f_pump = None, f_tol = None):
+    def setProgramProfile(self, program, f_temp, stop, step, reps = 1, f_pump = None, f_tol = None):
         """
         Defines a program (temperature-time profile) based on the values of a function
 
