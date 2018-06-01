@@ -1,7 +1,7 @@
 import configparser
 import re
 import serial
-from numpy import diff, concatenate
+from numpy import diff, concatenate, floor
 
 # Class for LAUDA RP 845 Recirculating Bath with Serial Interface
 #   - Temperatures are read in Celsius
@@ -40,7 +40,7 @@ class LaudaRP845:
         self.err  = False
 
     # Connects and opens serial connection to specified port
-    # port must be a string in the form COM* where * is one or more digits - ex. "COM7" or "COM12"
+    # port must be an integer corresponding to the desired port (e.g. 12 = COM12)
     def connect(self, port=0, baud=9600, timeout=2.0):
         """Scan serial ports for device and attempt connection."""
         cfg  = configparser.ConfigParser()
@@ -229,6 +229,7 @@ class LaudaRP845:
         """Select one of the 5 programmable temperature-time profiles"""
         if not (1 <= program <= 5 and isinstance(program, int)):
             self.warning("Program {:0d} not set. Choose an integer between 1 and 5".format(program))
+            return False
 
         res = self.sendCmd("rmp select {}".format(program))[0].strip()
 
@@ -348,6 +349,14 @@ class LaudaRP845:
 
         return(prg)
 
+    def getBathID(self):
+        """
+        Gets bath identification number. This is a workaround and uses the digits after the decimal
+        in the maximum bath temperature as id
+        """
+        res = float(self.sendCmd('in sp 04')[0].strip())
+        bathID = int(10 * (res - floor(res)))
+        return(bathID)
 
     def getBathTemp(self):
         """Get temperature measured by internal sensor."""
