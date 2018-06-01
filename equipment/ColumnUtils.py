@@ -60,7 +60,6 @@ class Thermistor(object):
         else:
             raise ValueError('thermistor not in calibration file') 
        
-
     @staticmethod
     def func(R, a, b, c, d, R0): 
         """
@@ -71,4 +70,21 @@ class Thermistor(object):
         x = R / R0
         T = 1 / (a + b * np.log(x) + c * np.log(x)**2 + d * np.log(x)**3)
         return T
+
+    def hasCalibration(self, thermistors):
+        """ checks if a list of thermistors (names) have calibration data """
+        if not self.calibration:
+            print("Missing calibration file")
+            return False
+        
+        missing = []
+        for name in thermistors:
+            if not self.calibration[name]:
+                missing.append(name)
+        
+        if len(missing) == 0:
+            return True
+        
+        print(*missing, sep='\n')
+        return False
 
