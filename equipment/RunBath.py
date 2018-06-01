@@ -8,10 +8,12 @@ delay = 30 ## delay n seconds before starting
 
 # conect to bath
 bath = LaudaRP845()
-if not bath.connect():
+if not bath.connect(port=9):
     print("Failed to connect to Lauda")
     exit(1)
 
+#print(bath.getBathTemp())
+print('this is bath {}'.format(bath.getBathID()))
 # print(bath.getCurrentProgram())
 # ft = lambda t: 3 * np.sin(2 * t * np.pi / 10) + 15
 # fp = lambda x: 8
@@ -20,7 +22,7 @@ if not bath.connect():
 
 # bath.controlProgram('start')
 
-print(np.array(bath.getAllProgramSegments(program=2)))
+#print(np.array(bath.getAllProgramSegments(program=2)))
 #bath.controlProgram('start')
 # print('getting programs')
 # print(bath.getAllProgramSegments(program=1))
