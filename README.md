@@ -64,6 +64,7 @@ Again, this uses a Serial connection (9600 BAUD), but it has the following addit
     deleteProgram(): Clear all segments of currently selected program
     getCurrentProgram(): Return the number (index) of the currenly selected program
     controlProgram(): Control program behaviour (start, pause, resume, stop)
+    setProgramProfile(): Define a temperature-time profile for the bath to follow using a python function F(t) where t is measured in minutes
     
 ## Keysight34972A.py - Data Acquisition Unit
 
