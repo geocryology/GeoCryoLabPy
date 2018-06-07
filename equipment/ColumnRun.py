@@ -7,8 +7,7 @@ import numpy as np
 
 from LaudaRP845     import LaudaRP845
 from Keysight34972A import Keysight34972A
-from ColumnUtils    import Thermistor
-from logDAQ         import getChannels, getChannelName
+from ColumnUtils    import Thermistor, getChannels, getChannelName
 from itertools      import izip
 from pyEmail        import Emailer
 
@@ -23,7 +22,7 @@ dflt_duration  =  15           # minutes
 dflt_port_up   =  12           # Which port to connect to for upper bath
 dflt_port_low  =  9            # Which port to connect to for lower bath
 dflt_ft_up     = '10 + (t/60)' # One degree per hour ramp
-dflt_ft_low    = '10'          # Constant temperature 
+dflt_ft_low    = '10'          # Constant temperature
 dflt_up        =  1            # Use upper temperature control? 0: no, 1: yes
 dflt_low       =  1            # Use lower temperature control? 0: no, 1: yes
 dflt_rep_up    =  1            # Number of repetitions upper cooling plate program
@@ -39,7 +38,7 @@ parser = argparse.ArgumentParser(description="Read soil column temperatures from
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 # Experiment control
-parser.add_argument('--delay',    default=dflt_initDelay, type=int, help="How long to wait (minutes) before starting the experiment")
+parser.add_argument('--initDelay',     default=dflt_initDelay, type=int, help="How long to wait (minutes) before starting the experiment")
 
 # Cooling plate control
 parser.add_argument('--up',        default=dflt_up,        type=int, help="Enable upper cooling plate 0 = off, 1 = on")
@@ -68,18 +67,18 @@ parser.add_argument('--subject',   default="Experiment Complete",     help="Emai
 # Set parameters from command line arguments
 args = parser.parse_args()
 
-up        = args.up
-low       = args.low
-port_up   = args.port_up
-port_low  = args.port_low
-ft_up     = args.ft_up
-ft_low    = args.ft_low
-rep_up    = args.rep_up
-rep_low   = args.rep_low
-tstop_up  = args.tstop_up
-tstop_low = args.tstop_low
-disc_up   = args.disc_up
-disc_low  = args.disc_low
+up         = args.up
+low        = args.low
+port_up    = args.port_up
+port_low   = args.port_low
+ft_up_str  = args.ft_up
+ft_low_str = args.ft_low
+rep_up     = args.rep_up
+rep_low    = args.rep_low
+tstop_up   = args.tstop_up
+tstop_low  = args.tstop_low
+disc_up    = args.disc_up
+disc_low   = args.disc_low
 
 readDelay = args.rdelay
 
@@ -89,6 +88,8 @@ if channelList:
     for channel in sorted(channels):
         channelNames[str(channel)] = getChannelName(channel)
     thermistorNames = [channelNames[str(channel)] for channel in sorted(channels)]
+else:
+    thermistorNames = []
 
 # Connect to instruments if they're needed
 connected = []
@@ -98,44 +99,49 @@ if channelList:
     if not daq.connect():
         print("Failed to connect to DAQ")
         exit(1)
-    
+
     connected.append(daq)
 
 if up:
     bathUpper = LaudaRP845()
     if not bathUpper.connect(port=port_up):
         print("Failed to connect to upper bath")
-        map(lambda x: x.disconnect(), connected)   
+        map(lambda x: x.disconnect(), connected)
         exit(1)
-    
+
     connected.append(bathUpper)
 
 if low:
     bathLower = LaudaRP845()
     if not bathLower.connect(port=port_low):
         print("Failed to connect to lower bath")
-        map(lambda x: x.disconnect(), connected)   
+        map(lambda x: x.disconnect(), connected)
         exit(1)
-    
-    connected.append(bathLower)  
+
+    connected.append(bathLower)
 
 # Prepare bath programs
 if up:
-    ft_up = lambda t: eval(ft_up)
+    print("Setting temperature bath for upper cooling plate")
+    bathUpper.controlProgram("stop")
+    ft_up = lambda t: eval(ft_up_str)
     bathUpper.setSetpoint(ft_up(0))
     bathUpper.setProgramProfile(4, ft_up, tstop_up, disc_up, reps = rep_up)
 
 if low:
-    ft_low = lambda t: eval(ft_low)
+    print("Setting temperature bath for lower cooling plate")
+    bathLower.controlProgram("stop")
+    ft_low = lambda t: eval(ft_low_str)
     bathLower.setSetpoint(ft_low(0))
-    bathLower.setProgramProfile(4, ft_low, tstop_low, disc_up, reps = rep_low)
+    bathLower.setProgramProfile(4, ft_low, tstop_low, disc_low, reps = rep_low)
 
 # Get calibration data for converstion of resistances
-Therm = Thermistor()
-Therm.readCalibration(args.calib) 
-if not Therm.hasCalibration(channelNames.values()):
-    print("Missing calibration data for thermistors!")
-    exit(1)
+if channelList:
+    Therm = Thermistor()
+    Therm.readCalibration(args.calib)
+    if not Therm.hasCalibration(channelNames.values()):
+        print("Missing calibration data for thermistors!")
+        exit(1)
 
 # Prepare files for writing
 filename  = ""
@@ -145,7 +151,7 @@ else:
     timestamp = datetime.datetime.now().isoformat().split('.')[0].replace(':', '_')
     filename  = "{}_ColumnRun".format(timestamp)
 
-commonHdrs = 'Timestamp,upperBathTemp,upperExtTemp,lowerBathTemp,lowerExtTemp'
+commonHdrs = 'Timestamp,upperBathTemp,upperExtTemp,upperTarget,lowerBathTemp,lowerExtTemp,lowerTarget'
 
 # Write resistances file
 output = open("{}_res.csv".format(filename), "w")
@@ -162,7 +168,14 @@ output.close()
 
 # Wait...
 if args.initDelay:
-    time.sleep(args.initDelay)
+    t = args.initDelay * 60
+    while t:
+        mins, secs = divmod(t, 60)
+        timeformat = "\r Experiment begins in {:02d}:{:02d}".format(mins, secs)
+        print (timeformat),
+        time.sleep(1)
+        t -= 1
+    print("")
 
 # Start bath programs
 if up:
@@ -170,42 +183,46 @@ if up:
 if low:
     bathLower.controlProgram("start")
 
-duration = np.max(tstop_up * rep_up, tstop_low * rep_low) * 60
+duration = np.max([tstop_up * rep_up, tstop_low * rep_low]) * 60
 
 # Start recording
-for t in range(0, duration + readDelay, readDelay): 
+for t in range(0, duration + readDelay, readDelay):
     t0 = time.time()
     currentTime = datetime.datetime.now().isoformat()
-    
+
     # read DAQ
     if channelList:
         print("Measuring DAQ")
         daqVals   = daq.readResistances(channelList)
-        
+
         daqValsTmp = [Therm.calculateTemperature(res, name) for (res, name) in izip(daqVals, thermistorNames)]
         errMinus, errPlus = [Therm.calculateUncertainty(res, name) for (res, name) in izip(daqVals, thermistorNames)]
         daqValsTmp = [val for triplet in izip(daqValsTmp, errMinus, errPlus) for val in triplet]
         daqVals      = ",".join(map(str, daqVals))
         daqValsTmp   = ",".join(map(str, daqValsTmp))
-    
-    # read bath temps 
-    T_up, T_low, Text_up, Text_low = -999, -999, -999, -999
-    
+    else:
+        daqVals, daqValsTmp = [], []
+
+    # read bath temps
+    T_up, T_low, trgt_up, trgt_low, Text_up, Text_low = -999, -999, -999, -999, -999, -999
+
     if up:
         T_up = bathUpper.getBathTemp()
+        trgt_up = bathUpper.getSetpoint()
         print('skipping external temperature for upper bath')
     if low:
         T_low = bathLower.getBathTemp()
+        trgt_low = bathLower.getSetpoint()
         print('skipping external temperature for lower bath')
 
     # write data (resistances)
     with open("{}_res.csv".format(filename), "a") as output:
-        output.write("{},{},{},{},{},{}\n".format(currentTime, T_up, Text_up, T_low, Text_low, daqVals))
+        output.write("{},{},{},{},{},{}\n".format(currentTime, T_up, Text_up, trgt_up, T_low, Text_low, trgt_low, daqVals))
 
-     # write data (temperatures + uncertainties) 
+     # write data (temperatures + uncertainties)
     with open("{}_tmp.csv".format(filename), "a") as output:
-        output.write("{},{},{},{},{},{}\n".format(currentTime, T_up, Text_up, T_low, Text_low, daqValsTmp))
-    
+        output.write("{},{},{},{},{},{}\n".format(currentTime, T_up, Text_up, trgt_up, T_low, Text_low, trgt_low, daqValsTmp))
+
     # wait until next measurement instant
     time.sleep(readDelay - (time.time() - t0))
 
