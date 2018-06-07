@@ -189,10 +189,10 @@ duration = np.max([tstop_up * rep_up, tstop_low * rep_low]) * 60
 for t in range(0, duration + readDelay, readDelay):
     t0 = time.time()
     currentTime = datetime.datetime.now().isoformat()
-
+    status = '\r{:2.0f}% complete.  Status: '.format(100. * t / (duration + readDelay))
     # read DAQ
     if channelList:
-        print("Measuring DAQ")
+        print("{} Measuring DAQ".format(status).ljust(80)),
         daqVals   = daq.readResistances(channelList)
 
         daqValsTmp = [Therm.calculateTemperature(res, name) for (res, name) in izip(daqVals, thermistorNames)]
@@ -207,23 +207,28 @@ for t in range(0, duration + readDelay, readDelay):
     T_up, T_low, trgt_up, trgt_low, Text_up, Text_low = -999, -999, -999, -999, -999, -999
 
     if up:
+        print('{} Reading upper bath'.format(status).ljust(80)),
         T_up = bathUpper.getBathTemp()
         trgt_up = bathUpper.getSetpoint()
-        print('skipping external temperature for upper bath')
+        print('{} skipping external temperature for upper bath'.format(status).ljust(80)),
+
     if low:
+        print('{} Reading lower bath'.format(status).ljust(80)),
         T_low = bathLower.getBathTemp()
         trgt_low = bathLower.getSetpoint()
-        print('skipping external temperature for lower bath')
+        print('{} skipping external temperature for lower bath'.format(status).ljust(80)),
 
     # write data (resistances)
+    print('{} Writing data to file'.format(status).ljust(80)),
     with open("{}_res.csv".format(filename), "a") as output:
-        output.write("{},{},{},{},{},{}\n".format(currentTime, T_up, Text_up, trgt_up, T_low, Text_low, trgt_low, daqVals))
+        output.write("{},{},{},{},{},{},{},{}\n".format(currentTime, T_up, Text_up, trgt_up, T_low, Text_low, trgt_low, daqVals))
 
      # write data (temperatures + uncertainties)
     with open("{}_tmp.csv".format(filename), "a") as output:
-        output.write("{},{},{},{},{},{}\n".format(currentTime, T_up, Text_up, trgt_up, T_low, Text_low, trgt_low, daqValsTmp))
+        output.write("{},{},{},{},{},{},{},{}\n".format(currentTime, T_up, Text_up, trgt_up, T_low, Text_low, trgt_low, daqValsTmp))
 
     # wait until next measurement instant
+    print('{} Waiting for next read cycle'.format(status).ljust(80)),
     time.sleep(readDelay - (time.time() - t0))
 
 # disconnect connected devices
