@@ -9,32 +9,11 @@ from Keysight34972A import Keysight34972A
 from Fluke7341      import Fluke7341
 from Fluke1502A     import Fluke1502A
 from pyEmail        import Emailer
+from ColumnUtils    import getChannels, getChannelName
 
 validChannels = range(101, 121) + range(201, 221) + range(301, 321)
 
-def getChannels(channelList):
-    channels = set()
-    ranges = channelList.split(",")
-    for rng in ranges:
-        if ":" in rng:
-            lo, hi = map(int, rng.split(":"))
-            for channel in range(lo, hi+1):
-                if channel not in validChannels:
-                    print "Invalid channel {}".format(channel)
-                    exit(1)
-                channels.add(channel)
-        else:
-            if channel not in validChannels:
-                print "Invalid channel {}".format(channel)
-                exit(1)
-            channels.add(int(rng))
-    return channels
 
-def getChannelName(channel):
-    slot = channel / 100
-    k    = channel % 100 + 20 * (slot - 1)
-    cable = 1 + (k-1) / 10
-    return "T17-S{}C{}-{}".format(str(slot), str(cable), str(k).zfill(3))
 
 # Default settings
 startTemp =  5      # Initial bath temperature
