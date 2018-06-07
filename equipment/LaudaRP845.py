@@ -312,9 +312,9 @@ class LaudaRP845:
         # Define each timstep. In the future, these don't have to be evenly spaced
         times = range(0, stop + step, step)
         intervals = concatenate([[0], diff(times)]) # interval for START is always 0
-        temps = [f_temp(t) for t in times]
-        tols = [f_tol(t) for t in times]
-        pumps = [f_pump(t) for t in times]
+        temps = [f_temp(float(t)) for t in times]
+        tols =  [f_tol(float(t))  for t in times]
+        pumps = [f_pump(float(t)) for t in times]
 
         # Write program segment for each timestep
         for (T, I, L, P) in zip(temps, intervals, tols, pumps):
