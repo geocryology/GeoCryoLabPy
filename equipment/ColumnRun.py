@@ -14,14 +14,22 @@ from pyEmail        import Emailer
 
 
 # Default settings
-validChannels = range(101, 121) + range(201, 221) + range(301, 321)
-channelList = []
-dflt_initDelay = 0
 
+validChannels = range(101, 121) + range(201, 221) + range(301, 321)
+# DAQ channels to read
+# - Sensors are identified by DAQ slot (1-3, first digit)
+#   and sensor number (1-20, second and 3rd digits)
+# - Channels must be comma separated, i.e. 101,102,103,202,203
+# - Channels can be specified as a range, i.e. 101:110 for sensors 1-10
+# - Ranges can be comma separated, i.e. 101:105,110:115 for sensors 1-5 and 10-15
+# - Ranges can only contain sensors on one slot, so 101:320 will not work
+channelList = []
+
+dflt_initDelay =  0
 dflt_duration  =  15           # minutes
 dflt_port_up   =  12           # Which port to connect to for upper bath
 dflt_port_low  =  9            # Which port to connect to for lower bath
-dflt_ft_up     = '10 + (t/60)' # One degree per hour ramp
+dflt_ft_up     = '10 + (t/15)' # Four degrees per hour ramp
 dflt_ft_low    = '10'          # Constant temperature
 dflt_up        =  1            # Use upper temperature control? 0: no, 1: yes
 dflt_low       =  1            # Use lower temperature control? 0: no, 1: yes
@@ -38,24 +46,24 @@ parser = argparse.ArgumentParser(description="Read soil column temperatures from
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 # Experiment control
-parser.add_argument('--initDelay',     default=dflt_initDelay, type=int, help="How long to wait (minutes) before starting the experiment")
+parser.add_argument('--idelay',     default=dflt_initDelay, type=int, help="Time (s) to wait for adjustment to initial setpoint corresponding to f(0) of the temperature control function. This delay is only used once at the start of the experiment (default: 0)")
 
 # Cooling plate control
 parser.add_argument('--up',        default=dflt_up,        type=int, help="Enable upper cooling plate 0 = off, 1 = on")
 parser.add_argument('--low',       default=dflt_low,       type=int, help="Enable lower cooling plate 0 = off, 1 = on")
-parser.add_argument('--port_up',   default=dflt_port_up,   type=int, help="Port for bath controlling upper cooling plate")
-parser.add_argument('--port_low',  default=dflt_port_low,  type=int, help="Port for bath controlling upper cooling plate")
-parser.add_argument('--ft_up',     default=dflt_ft_up,     type=str, help="Function defining upper cooling plate temperature as a funtion of 't' (minutes) e.g. '12 + (t/30)' or  '22' (for constant temperature")
-parser.add_argument('--ft_low',    default=dflt_ft_low,    type=str, help="Function defining lower cooling plate temperature as a funtion of 't' (minutes) e.g. '12 + (t/30)' or  '22' (for constant temperature")
-parser.add_argument('--rep_up',    default=dflt_up,        type=int, help="Number of repetitions for upper cooling plate program")
-parser.add_argument('--rep_low',   default=dflt_low,       type=int, help="Number of repetitions for lower cooling plate program")
-parser.add_argument('--tstop_up',  default=dflt_tstop_up,  type=int, help="Number of minutes to run upper cooling plate function before terminating or repeating")
-parser.add_argument('--tstop_low', default=dflt_tstop_low, type=int, help="Number of minutes to run lower cooling plate function before terminating or repeating")
-parser.add_argument('--disc_up',   default=dflt_disc_up,   type=int, help="Discretization interval for upper bath function")
-parser.add_argument('--disc_low',  default=dflt_disc_low,  type=int, help="Discretization interval for lower bath function")
+parser.add_argument('--port_up',   default=dflt_port_up,   type=int, help="COM port for bath controlling upper cooling plate")
+parser.add_argument('--port_low',  default=dflt_port_low,  type=int, help="COM port for bath controlling lower cooling plate")
+parser.add_argument('--ft_up',     default=dflt_ft_up,     type=str, help="Function defining upper cooling plate temperature as a funtion of 't' (minutes).  prefix numpy functions with 'np.' and do not use spaces in the function e.g. '12+(t/30)' or  '22' or 'np.sin(np.radians(t*np.pi/180))' ")
+parser.add_argument('--ft_low',    default=dflt_ft_low,    type=str, help="Function defining lower cooling plate temperature as a funtion of 't' (minutes).  prefix numpy functions with 'np.' and do not use spaces in the function e.g. '12+(t/30)' or  '22' or 'np.sin(np.radians(t*np.pi/180))' ")
+parser.add_argument('--rep_up',    default=dflt_up,        type=int, help="Number of times to repeat upper cooling plate function")
+parser.add_argument('--rep_low',   default=dflt_low,       type=int, help="Number of times to repeat lower cooling plate function")
+parser.add_argument('--tstop_up',  default=dflt_tstop_up,  type=int, help="Length of time (m) to run upper cooling plate function before terminating or repeating")
+parser.add_argument('--tstop_low', default=dflt_tstop_low, type=int, help="Length of time (m) to run lower cooling plate function before terminating or repeating")
+parser.add_argument('--disc_up',   default=dflt_disc_up,   type=int, help="Sampling interval (m) for upper bath function. A larger value gives a coarser discretization. E.g. a value of 2 samples the function every two minutes and writes two-minute intervals to the bath")
+parser.add_argument('--disc_low',  default=dflt_disc_low,  type=int, help="Sampling interval (m) for lower bath function. A larger value gives a coarser discretization. E.g. a value of 2 samples the function every two minutes and writes two-minute intervals to the bath")
 
 # Thermistor control
-parser.add_argument('--rdelay',    default=dflt_rdelay,    type=int, help="number of seconds between thermistor measurements (DAQ)")
+parser.add_argument('--rdelay',    default=dflt_rdelay,    type=int, help="Wait time (s) between thermistor (DAQ) and cooling bath measurements")
 parser.add_argument('--channels',  default=channelList,    help="List of DAQ channels to read, see code for detailed documentation on format")
 parser.add_argument('--filename',  help="Filename of output csv file (.csv extention added automatically)")
 parser.add_argument('--calib',     help="Filename of thermistor calibration file")
@@ -167,8 +175,8 @@ output.write("{},{}\n".format(commonHdrs, ",".join(headers)))
 output.close()
 
 # Wait...
-if args.initDelay:
-    t = args.initDelay * 60
+if args.idelay:
+    t = args.idelay
     while t:
         mins, secs = divmod(t, 60)
         timeformat = "\r Experiment begins in {:02d}:{:02d}".format(mins, secs)
