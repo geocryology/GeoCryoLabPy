@@ -109,15 +109,15 @@ ColumnRun.py is used to launch soil column experiments by controlling the coolin
     --tstop_up       Length of time (m) to run upper cooling plate function before terminating or repeating
     --tstop_low      Length of time (m) to run lower cooling plate function before terminating or repeating
     --disc_up        Sampling interval (m) for upper bath function. A larger value gives a coarser discretization. E.g. a value of 2 samples the function every two minutes and writes two-minute intervals to the bath
-    --disc_low        Sampling interval (m) for lower bath function. A larger value gives a coarser discretization. E.g. a value of 2 samples the function every two minutes and writes two-minute intervals to the bath
+    --disc_low       Sampling interval (m) for lower bath function. A larger value gives a coarser discretization. E.g. a value of 2 samples the function every two minutes and writes two-minute intervals to the bath
     
-    --rdelay      Time (s) to wait between subsequent DAQ reads (default:15)
+    --rdelay         Time (s) to wait between subsequent DAQ reads (default:15)
 
-    --start        Initial bath temperature (default: 5)
-    --channels   List of DAQ channels to read (e.g. '101:112,205:220'), see code for detailed documentation on format.  Omitting the channels argument will run the cooling baths and record their temperatures but will not connect to or read the DAQ. This can be helpful if the DAQ is being used by another process.
-    --filename   Filename of output csv file (.csv extention added automatically) (default: None)
-    --email         Send results to this email (default: )
-    --subject     Email subject line (default: Experiment Complete)
+    --start          Initial bath temperature (default: 5)
+    --channels       List of DAQ channels to read (e.g. '101:112,205:220'), see code for detailed documentation on format.  Omitting the channels argument will run the cooling baths and record their temperatures but will not connect to or read the DAQ. This can be helpful if the DAQ is being used by another process.
+    --filename       Filename of output csv file (.csv extention added automatically) (default: None)
+    --email          Send results to this email (default: )
+    --subject        Email subject line (default: Experiment Complete)
 
 ## Controller.py
 
