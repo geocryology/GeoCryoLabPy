@@ -6,6 +6,26 @@ class Thermistor(object):
     def __init__(self):
         self.calibration = None
 
+    def readNames(self, file):
+        """
+        Read a csv that gives the name of the thermistor in each channel
+        """
+        names = read_csv(file)
+        self.channelNames = {x:y for (x,y) in zip(names.ix[:,0], names.ix[:,0])}
+        mes = {x:y for (x,y) in zip(a.ix[:,0], a.ix[:,1])}
+
+    def channelName(self, channel):
+        """
+        Get name of thermistor in channel.  Uses a csv to store names which allows for
+        the replacement of thermistors over time if any burn out
+        """
+        if self.channelNames[channel]:
+            name = self.channelNames[channel]
+            return(name)
+
+        else:
+            raise LookupError('Channel not valid')
+
     def readCalibration(self, file):
         """
         reads a calibration file and stores parameters as a dictionary
@@ -27,7 +47,7 @@ class Thermistor(object):
             T = self.func(res, a, b, c, d, R0)
             return T
         else:
-            raise ValueError('thermistor not in calibration file')
+            raise LookupError('thermistor not in calibration file')
 
     def calculateUncertainty(self, res, thermistor):
         """
@@ -58,7 +78,7 @@ class Thermistor(object):
             T = [min(Ts), max(Ts)]
             return T
         else:
-            raise ValueError('thermistor not in calibration file')
+            raise LookupError('thermistor not in calibration file')
 
     @staticmethod
     def func(R, a, b, c, d, R0):
@@ -89,9 +109,13 @@ class Thermistor(object):
         return False
 
 def getChannels(channelList):
+    """get a set of channels from a text string"""
+    validChannels = range(101, 121) + range(201, 221) + range(301, 321)
     channels = set()
     ranges = channelList.split(",")
+
     for rng in ranges:
+        # For 'true' ranges
         if ":" in rng:
             lo, hi = map(int, rng.split(":"))
             for channel in range(lo, hi+1):
@@ -99,14 +123,18 @@ def getChannels(channelList):
                     print "Invalid channel {}".format(channel)
                     exit(1)
                 channels.add(channel)
+
+       # For singletons
         else:
-            if channel not in validChannels:
+            if int(rng) not in validChannels:
                 print "Invalid channel {}".format(channel)
                 exit(1)
             channels.add(int(rng))
+
     return channels
 
 def getChannelName(channel):
+    """Get the name of a thermistor based on its channel"""
     slot = channel / 100
     k    = channel % 100 + 20 * (slot - 1)
     cable = 1 + (k-1) / 10
