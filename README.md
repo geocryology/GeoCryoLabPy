@@ -91,6 +91,34 @@ logDAQ.py is used for measuring thermistors while controlling the calibration ba
     --email EMAIL        Send results to this email (default: )
     --subject SUBJECT    Email subject line (default: Experiment Complete)
 
+## ColumnRun.py
+
+ColumnRun.py is used to launch soil column experiments by controlling the cooling baths as well as the recording interval of thermistors connected to the DAQ. In the script, temperature-time profiles (programs) are written to the cooling baths according to a user-defined function. Then, the programs are set to run, and periodically, the DAQ and the temperature baths are polled for their resistance and temperature values. The strucuture of the script follows that of logDAQ.py and much of the code is very similar. As with logDAQ, the behaviour of the experiment is controlled by command line arguments:
+
+
+    -h, --help       show this help message and exit
+    --idelay         Time (s) to wait for adjustment to initial setpoint corresponding to f(0) of the temperature control function. This delay is only used once at the start of the experiment (default: 0)
+    --up             Enable upper cooling plate 0 = off, 1 = on
+    --low            Enable lower cooling plate 0 = off, 1 = on
+    --port_up        Communication port for the bath controlling the upper cooling plate
+    --port_low       Communication port for the bath controlling the lower cooling plate
+    --ft_up          Function defining upper cooling plate temperature as a funtion of 't' (minutes).  prefix numpy functions with 'np.' and do not use spaces in the function e.g. '12+(t/30)' or  '22' or 'np.sin(np.radians(t*np.pi/180))
+    --ft_low         Function defining lower cooling plate temperature as a funtion of 't' (minutes).  prefix numpy functions with 'np.' and do not use spaces in the function e.g. '12+(t/30)' or  '22' or 'np.sin(np.radians(t*np.pi/180))
+    --rep_up         Number of times to repeat upper cooling plate function
+    --rep_low        Number of times to repeat upper cooling plate function
+    --tstop_up       Length of time (m) to run upper cooling plate function before terminating or repeating
+    --tstop_low      Length of time (m) to run lower cooling plate function before terminating or repeating
+    --disc_up        Sampling interval (m) for upper bath function. A larger value gives a coarser discretization. E.g. a value of 2 samples the function every two minutes and writes two-minute intervals to the bath
+    --disc_low        Sampling interval (m) for lower bath function. A larger value gives a coarser discretization. E.g. a value of 2 samples the function every two minutes and writes two-minute intervals to the bath
+    
+    --rdelay      Time (s) to wait between subsequent DAQ reads (default:15)
+
+    --start        Initial bath temperature (default: 5)
+    --channels   List of DAQ channels to read (e.g. '101:112,205:220'), see code for detailed documentation on format.  Omitting the channels argument will run the cooling baths and record their temperatures but will not connect to or read the DAQ. This can be helpful if the DAQ is being used by another process.
+    --filename   Filename of output csv file (.csv extention added automatically) (default: None)
+    --email         Send results to this email (default: )
+    --subject     Email subject line (default: Experiment Complete)
+
 ## Controller.py
 
 Controller.py uses a feedback loop to make measurements and automatically determine when the temperature has reached thermal equilibrium. It operates based on a sequence of text commands to define a 'program'. The controller will log temperature readings at specified intervals until the supplied program terminates. The valid commands are as follows:
