@@ -3,6 +3,10 @@ import numpy as np
 from pandas import read_csv, DataFrame
 
 class Thermistor(object):
+    """
+    Provides tools to deal with thermistors based on external calibration
+    and name files
+    """
     def __init__(self):
         self.calibration = None
 
