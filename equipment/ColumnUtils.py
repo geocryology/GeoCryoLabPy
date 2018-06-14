@@ -1,5 +1,6 @@
 ### Tools to facilitate column experiments
 import numpy as np
+import uncertainties as unc
 from pandas import read_csv, DataFrame
 
 class Thermistor(object):
@@ -61,26 +62,9 @@ class Thermistor(object):
             C = self.calibration[thermistor]
             keys = ['a','b','c','d', 'uncert_a', 'uncert_b', 'uncert_c', 'uncert_d', 'R0']
             (a,b,c,d, uncert_a, uncert_b, uncert_c, uncert_d,R0) = [C[x] for x in keys]
-            Ts = np.array([
-                self.func(res, a + uncert_a, b + uncert_b, c + uncert_c, d + uncert_d, R0),
-                self.func(res, a + uncert_a, b - uncert_b, c + uncert_c, d + uncert_d, R0),
-                self.func(res, a + uncert_a, b + uncert_b, c - uncert_c, d + uncert_d, R0),
-                self.func(res, a + uncert_a, b - uncert_b, c - uncert_c, d + uncert_d, R0),
-                self.func(res, a - uncert_a, b + uncert_b, c + uncert_c, d + uncert_d, R0),
-                self.func(res, a - uncert_a, b - uncert_b, c + uncert_c, d + uncert_d, R0),
-                self.func(res, a - uncert_a, b + uncert_b, c - uncert_c, d + uncert_d, R0),
-                self.func(res, a - uncert_a, b - uncert_b, c - uncert_c, d + uncert_d, R0),
-                self.func(res, a + uncert_a, b + uncert_b, c + uncert_c, d - uncert_d, R0),
-                self.func(res, a + uncert_a, b - uncert_b, c + uncert_c, d - uncert_d, R0),
-                self.func(res, a + uncert_a, b + uncert_b, c - uncert_c, d - uncert_d, R0),
-                self.func(res, a + uncert_a, b - uncert_b, c - uncert_c, d - uncert_d, R0),
-                self.func(res, a - uncert_a, b + uncert_b, c + uncert_c, d - uncert_d, R0),
-                self.func(res, a - uncert_a, b - uncert_b, c + uncert_c, d - uncert_d, R0),
-                self.func(res, a - uncert_a, b + uncert_b, c - uncert_c, d - uncert_d, R0),
-                self.func(res, a - uncert_a, b - uncert_b, c - uncert_c, d - uncert_d, R0)
-                ])
-            T = [min(Ts), max(Ts)]
-            return T
+            Tu = self.func(res, unc.ufloat(a, uncert_a*2), unc.ufloat(b, uncert_b*2),
+                         unc.ufloat(c, uncert_c*2), unc.ufloat(d, uncert_d*2), R0) 
+            return Tu
         else:
             raise LookupError('thermistor not in calibration file')
 
@@ -143,3 +127,4 @@ def getChannelName(channel):
     k    = channel % 100 + 20 * (slot - 1)
     cable = 1 + (k-1) / 10
     return "T17-S{}C{}-{}".format(str(slot), str(cable), str(k).zfill(3))
+
