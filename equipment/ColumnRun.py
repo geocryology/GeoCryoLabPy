@@ -15,7 +15,6 @@ from pyEmail        import Emailer
 
 # Default settings
 
-validChannels = range(101, 121) + range(201, 221) + range(301, 321)
 # DAQ channels to read
 # - Sensors are identified by DAQ slot (1-3, first digit)
 #   and sensor number (1-20, second and 3rd digits)
@@ -23,12 +22,12 @@ validChannels = range(101, 121) + range(201, 221) + range(301, 321)
 # - Channels can be specified as a range, i.e. 101:110 for sensors 1-10
 # - Ranges can be comma separated, i.e. 101:105,110:115 for sensors 1-5 and 10-15
 # - Ranges can only contain sensors on one slot, so 101:320 will not work
-channelList = []
+dflt_channels  = []
 
 dflt_initDelay =  0
 dflt_duration  =  15           # minutes
-dflt_port_up   =  12           # Which port to connect to for upper bath
-dflt_port_low  =  9            # Which port to connect to for lower bath
+dflt_port_up   =  9            # Which port to connect to for upper bath
+dflt_port_low  =  12           # Which port to connect to for lower bath
 dflt_ft_up     = '10 + (t/15)' # Four degrees per hour ramp
 dflt_ft_low    = '10'          # Constant temperature
 dflt_up        =  1            # Use upper temperature control? 0: no, 1: yes
@@ -64,7 +63,7 @@ parser.add_argument('--disc_low',  default=dflt_disc_low,  type=int, help="Sampl
 
 # Thermistor control
 parser.add_argument('--rdelay',    default=dflt_rdelay,    type=int, help="Wait time (s) between thermistor (DAQ) and cooling bath measurements")
-parser.add_argument('--channels',  default=channelList,    help="List of DAQ channels to read, see code for detailed documentation on format")
+parser.add_argument('--channels',  default=dflt_channels,    help="List of DAQ channels to read, see code for detailed documentation on format")
 parser.add_argument('--filename',  help="Filename of output csv file (.csv extention added automatically)")
 parser.add_argument('--calib',     help="Filename of thermistor calibration file")
 
@@ -75,20 +74,20 @@ parser.add_argument('--subject',   default="Experiment Complete",     help="Emai
 # Set parameters from command line arguments
 args = parser.parse_args()
 
-up         = args.up
-low        = args.low
-port_up    = args.port_up
-port_low   = args.port_low
-ft_up_str  = args.ft_up
-ft_low_str = args.ft_low
-rep_up     = args.rep_up
-rep_low    = args.rep_low
-tstop_up   = args.tstop_up
-tstop_low  = args.tstop_low
-disc_up    = args.disc_up
-disc_low   = args.disc_low
-
-readDelay = args.rdelay
+up          = args.up
+low         = args.low
+port_up     = args.port_up
+port_low    = args.port_low
+ft_up_str   = args.ft_up
+ft_low_str  = args.ft_low
+rep_up      = args.rep_up
+rep_low     = args.rep_low
+tstop_up    = args.tstop_up
+tstop_low   = args.tstop_low
+disc_up     = args.disc_up
+disc_low    = args.disc_low
+channelList = args.channels
+readDelay   = args.rdelay
 
 if channelList:
     channels     = getChannels(channelList)
@@ -103,12 +102,14 @@ else:
 connected = []
 
 if channelList:
+    print("Connecting to DAQ ... "),
     daq = Keysight34972A()
     if not daq.connect():
         print("Failed to connect to DAQ")
         exit(1)
 
     connected.append(daq)
+    print("Connected!\n")
 
 if up:
     bathUpper = LaudaRP845()
@@ -144,12 +145,12 @@ if low:
     bathLower.setProgramProfile(4, ft_low, tstop_low, disc_low, reps = rep_low)
 
 # Get calibration data for converstion of resistances
-if channelList:
-    Therm = Thermistor()
-    Therm.readCalibration(args.calib)
-    if not Therm.hasCalibration(channelNames.values()):
-        print("Missing calibration data for thermistors!")
-        exit(1)
+# if channelList:
+#     Therm = Thermistor()
+#     Therm.readCalibration(args.calib)
+#     if not Therm.hasCalibration(channelNames.values()):
+#         print("Missing calibration data for thermistors!")
+#         exit(1)
 
 # Prepare files for writing
 filename  = ""
@@ -203,11 +204,12 @@ for t in range(0, duration + readDelay, readDelay):
         print("{} Measuring DAQ".format(status).ljust(80)),
         daqVals   = daq.readResistances(channelList)
 
-        daqValsTmp = [Therm.calculateTemperature(res, name) for (res, name) in izip(daqVals, thermistorNames)]
-        errMinus, errPlus = [Therm.calculateUncertainty(res, name) for (res, name) in izip(daqVals, thermistorNames)]
-        daqValsTmp = [val for triplet in izip(daqValsTmp, errMinus, errPlus) for val in triplet]
+        # daqValsTmp = [Therm.calculateTemperature(res, name) for (res, name) in izip(daqVals, thermistorNames)]
+        # errMinus, errPlus = [Therm.calculateUncertainty(res, name) for (res, name) in izip(daqVals, thermistorNames)]
+        # daqValsTmp = [val for triplet in izip(daqValsTmp, errMinus, errPlus) for val in triplet]
         daqVals      = ",".join(map(str, daqVals))
-        daqValsTmp   = ",".join(map(str, daqValsTmp))
+        daqValsTmp      = daqVals  #DELETE THIS!  DEBUG ONLY
+        # daqValsTmp   = ",".join(map(str, daqValsTmp))
     else:
         daqVals, daqValsTmp = [], []
 
@@ -218,13 +220,14 @@ for t in range(0, duration + readDelay, readDelay):
         print('{} Reading upper bath'.format(status).ljust(80)),
         T_up = bathUpper.getBathTemp()
         trgt_up = bathUpper.getSetpoint()
-        print('{} skipping external temperature for upper bath'.format(status).ljust(80)),
+        Text_up = bathUpper.getExtTemp()
 
     if low:
         print('{} Reading lower bath'.format(status).ljust(80)),
         T_low = bathLower.getBathTemp()
         trgt_low = bathLower.getSetpoint()
-        print('{} skipping external temperature for lower bath'.format(status).ljust(80)),
+        #Text_low = bathLower.getExtTemp()
+        print('{} skipping T_ext lower'.format(status).ljust(80)),
 
     # write data (resistances)
     print('{} Writing data to file'.format(status).ljust(80)),

@@ -414,15 +414,15 @@ class LaudaRP845:
 
     # Prints info message
     def info(self, msg):
-        print "[INFO] " + format(msg)
+        print "[INFO] [Bath {}]".format(self.getBathID()) + format(msg)
 
     # Prints warning message but does not exit
     def warning(self, msg):
-        print "[WARNING] " + format(msg)
+        print "[WARNING] [Bath {}]".format(self.getBathID()) + format(msg)
 
     # Prints error message and exits
     def error(self, msg):
-        print "[ERROR] " + format(msg)
+        print "[ERROR] [Bath {}]".format(self.getBathID()) + format(msg)
         exit(1)
 
 # Simple test code
