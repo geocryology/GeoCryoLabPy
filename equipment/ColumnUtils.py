@@ -36,7 +36,7 @@ class Thermistor(object):
         reads a calibration file and stores parameters as a dictionary
         """
         calib = read_csv(file)
-        calib = calib.set_index(calib.columns[0])
+        calib = calib.set_index(calib.columns[1])
         self.calibration = calib.transpose().to_dict()
         return True
 
