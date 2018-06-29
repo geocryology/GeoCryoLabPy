@@ -63,8 +63,8 @@ class Thermistor(object):
             keys = ['a','b','c','d', 'uncert_a', 'uncert_b', 'uncert_c', 'uncert_d', 'R0']
             (a,b,c,d, uncert_a, uncert_b, uncert_c, uncert_d,R0) = [C[x] for x in keys]
             Tu = self.func(res, unc.ufloat(a, uncert_a*2), unc.ufloat(b, uncert_b*2),
-                         unc.ufloat(c, uncert_c*2), unc.ufloat(d, uncert_d*2), R0) 
-            return Tu
+                         unc.ufloat(c, uncert_c*2), unc.ufloat(d, uncert_d*2), R0)
+            return unc.std_dev(Tu)
         else:
             raise LookupError('thermistor not in calibration file')
 
@@ -128,3 +128,7 @@ def getChannelName(channel):
     cable = 1 + (k-1) / 10
     return "T17-S{}C{}-{}".format(str(slot), str(cable), str(k).zfill(3))
 
+
+def processColumn(result_basename, cfgdir):
+    pass
+    # convert

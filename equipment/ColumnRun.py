@@ -38,7 +38,7 @@ dflt_tstop_up  =  15           # Duration in minutes of a single loop of the upp
 dflt_tstop_low =  15           # Duration in minutes of a single loop of the lower program
 dflt_disc_up   =  5            # How often should the temperature control function be 'sampled' to set bath setpoint
 dflt_disc_low  =  5            # How often should the temperature control function be 'sampled' to set bath setpoint
-
+dflt_calib     = "../data/columnconfig/thermistorCalibration.csv"
 dflt_rdelay    =  90           # seconds between DAQ readings (thermistor sampling frequency)
 
 parser = argparse.ArgumentParser(description="Read soil column temperatures from DAQ while cooling baths operate",
@@ -65,7 +65,7 @@ parser.add_argument('--disc_low',  default=dflt_disc_low,  type=int, help="Sampl
 parser.add_argument('--rdelay',    default=dflt_rdelay,    type=int, help="Wait time (s) between thermistor (DAQ) and cooling bath measurements")
 parser.add_argument('--channels',  default=dflt_channels,    help="List of DAQ channels to read, see code for detailed documentation on format")
 parser.add_argument('--filename',  help="Filename of output csv file (.csv extention added automatically)")
-parser.add_argument('--calib',     help="Filename of thermistor calibration file")
+parser.add_argument('--calib',     default=dflt_calib,     help="Filename of thermistor calibration file")
 
 # Email control
 parser.add_argument('--email',     default="",                        help="Send results to this email")
@@ -145,12 +145,12 @@ if low:
     bathLower.setProgramProfile(4, ft_low, tstop_low, disc_low, reps = rep_low)
 
 # Get calibration data for converstion of resistances
-# if channelList:
-#     Therm = Thermistor()
-#     Therm.readCalibration(args.calib)
-#     if not Therm.hasCalibration(channelNames.values()):
-#         print("Missing calibration data for thermistors!")
-#         exit(1)
+if channelList:
+    Therm = Thermistor()
+    Therm.readCalibration(args.calib)
+    if not Therm.hasCalibration(channelNames.values()):
+        print("Missing calibration data for thermistors!")
+        exit(1)
 
 # Prepare files for writing
 filename  = ""
@@ -168,9 +168,8 @@ output.write("{},{}\n".format(commonHdrs,",".join(thermistorNames)))
 output.close()
 
 # Write temperatures file
-upperLim = ['{}_upperlimit'.format(x) for x in thermistorNames]
-lowerLim = ['{}_lowerlimit'.format(x) for x in thermistorNames]
-headers = [val for triplet in izip(thermistorNames, upperLim, lowerLim) for val in triplet]
+tmp_stdev = ['{}_stdev'.format(x) for x in thermistorNames]
+headers = [val for pair in izip(thermistorNames, tmp_stdev) for val in pair]
 output = open("{}_tmp.csv".format(filename), "w")
 output.write("{},{}\n".format(commonHdrs, ",".join(headers)))
 output.close()
@@ -204,12 +203,11 @@ for t in range(0, duration + readDelay, readDelay):
         print("{} Measuring DAQ".format(status).ljust(80)),
         daqVals   = daq.readResistances(channelList)
 
-        # daqValsTmp = [Therm.calculateTemperature(res, name) for (res, name) in izip(daqVals, thermistorNames)]
-        # errMinus, errPlus = [Therm.calculateUncertainty(res, name) for (res, name) in izip(daqVals, thermistorNames)]
-        # daqValsTmp = [val for triplet in izip(daqValsTmp, errMinus, errPlus) for val in triplet]
+        daqValsTmp = [Therm.calculateTemperature(res, name) for (res, name) in izip(daqVals, thermistorNames)]
+        err = [Therm.calculateUncertainty(res, name) for (res, name) in izip(daqVals, thermistorNames)]
+        daqValsTmp = [val for pair in izip(daqValsTmp, err) for val in pair]
         daqVals      = ",".join(map(str, daqVals))
-        daqValsTmp      = daqVals  #DELETE THIS!  DEBUG ONLY
-        # daqValsTmp   = ",".join(map(str, daqValsTmp))
+        daqValsTmp   = ",".join(map(str, daqValsTmp))
     else:
         daqVals, daqValsTmp = [], []
 
@@ -226,8 +224,7 @@ for t in range(0, duration + readDelay, readDelay):
         print('{} Reading lower bath'.format(status).ljust(80)),
         T_low = bathLower.getBathTemp()
         trgt_low = bathLower.getSetpoint()
-        #Text_low = bathLower.getExtTemp()
-        print('{} skipping T_ext lower'.format(status).ljust(80)),
+        Text_low = bathLower.getExtTemp()
 
     # write data (resistances)
     print('{} Writing data to file'.format(status).ljust(80)),
