@@ -38,6 +38,7 @@ class LaudaRP845:
     def __init__(self):
         self.conn = None
         self.err  = False
+        self.bathID = None
 
     # Connects and opens serial connection to specified port
     # port must be an integer corresponding to the desired port (e.g. 12 = COM12)
@@ -352,11 +353,14 @@ class LaudaRP845:
     def getBathID(self):
         """
         Gets bath identification number. This is a workaround and uses the digits after the decimal
-        in the maximum bath temperature as id
+        in the maximum bath temperature as id. Result is cached so command is only ever sent once
         """
-        res = float(self.sendCmd('in sp 04')[0].strip())
-        bathID = int(10 * (res - floor(res)))
-        return(bathID)
+
+        if (self.bathID == None):
+            res = float(self.sendCmd('in sp 04')[0].strip())
+            bathID = int(10 * (res - floor(res)))
+            self.bathID = bathID
+        return(self.bathID)
 
     def getBathTemp(self):
         """Get temperature measured by internal sensor."""
@@ -414,15 +418,15 @@ class LaudaRP845:
 
     # Prints info message
     def info(self, msg):
-        print "[INFO] [Bath {}]".format(self.getBathID()) + format(msg)
+        print "[INFO] [Bath {}] ".format(self.getBathID()) + format(msg)
 
     # Prints warning message but does not exit
     def warning(self, msg):
-        print "[WARNING] [Bath {}]".format(self.getBathID()) + format(msg)
+        print "[WARNING] [Bath {}] ".format(self.getBathID()) + format(msg)
 
     # Prints error message and exits
     def error(self, msg):
-        print "[ERROR] [Bath {}]".format(self.getBathID()) + format(msg)
+        print "[ERROR] [Bath {}] ".format(self.getBathID()) + format(msg)
         exit(1)
 
 # Simple test code
