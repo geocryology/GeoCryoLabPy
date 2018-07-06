@@ -15,9 +15,10 @@ class LaudaRP845:
     CHARS_PER_READ      = 16            # reads response 16 bytes at a time
 
     # Setpoint Min/Max values are in Celsius
-    # These values are safety constraints, they can be changed as necessary
+    # These values are universal constraints, they can be changed as necessary
+    # Actual max (min) is the lesser (greater) of this value and the bath max (min)
     SETPOINT_MAX        =  50
-    SETPOINT_MIN        =  2 #[NB] changed to 2 deg for now until there is glycol in the bath
+    SETPOINT_MIN        =  -25 # If Min < 0, make sure there is enough glycol in the bath
 
     ERRORS              = {
         "2":  "Wrong input",
@@ -39,6 +40,7 @@ class LaudaRP845:
         self.conn = None
         self.err  = False
         self.bathID = None
+        self.getLimits()
 
     # Connects and opens serial connection to specified port
     # port must be an integer corresponding to the desired port (e.g. 12 = COM12)
@@ -193,12 +195,13 @@ class LaudaRP845:
     # set the setpoint of the bath in the same units as set wih setUnits()
     def setSetpoint(self, setpoint):
         """Set bath setpoint."""
-        if setpoint > self.SETPOINT_MAX:
-            self.warning("Setpoint '{}' too high, max = {}. Setpoint unchanged.".format(setpoint, self.SETPOINT_MAX))
+
+        if setpoint < self.temperatureLimits[0]:
+            self.warning("Setpoint '{}' too low, min = {}. Setpoint unchanged.".format(setpoint, self.temperatureLimits[0]))
             return False
 
-        if setpoint < self.SETPOINT_MIN:
-            self.warning("Setpoint '{}' too low, min = {}. Setpoint unchanged.".format(setpoint, self.SETPOINT_MIN))
+        if setpoint > self.temperatureLimits[1]:
+            self.warning("Setpoint '{}' too high, max = {}. Setpoint unchanged.".format(setpoint, self.temperatureLimits[1]))
             return False
 
         # convert setpoint to string with format xxx.xx (lauda desired format)
@@ -356,11 +359,27 @@ class LaudaRP845:
         in the maximum bath temperature as id. Result is cached so command is only ever sent once
         """
 
-        if (self.bathID == None):
+        if not self.bathID:
             res = float(self.sendCmd('in sp 04')[0].strip())
             bathID = int(10 * (res - floor(res)))
             self.bathID = bathID
         return(self.bathID)
+
+    def getLimits(self, recalculate = False):
+        """
+        Gets bath identification number. This is a workaround and uses the digits after the decimal
+        in the maximum bath temperature as id. Result is cached so command is only ever sent once
+        """
+
+        if recalculate or not self.temperatureLimits:
+            TiL = float(self.sendCmd('in sp 05')[0].strip())
+            TiL = np.max([TiL, self.SETPOINT_MIN])
+            TiH = float(self.sendCmd('in sp 04')[0].strip())
+            TiH = np.max([TiH, self.SETPOINT_MAX])
+
+            self.temperatureLimits = (TiL, TiH)
+
+        return(self.temperatureLimits)
 
     def getBathTemp(self):
         """Get temperature measured by internal sensor."""
