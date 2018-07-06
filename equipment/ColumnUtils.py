@@ -1,7 +1,13 @@
 ### Tools to facilitate column experiments
+import os
+import shutil
+import re
+from os import path, listdir
 import numpy as np
 import uncertainties as unc
-from pandas import read_csv, DataFrame
+
+from pandas import read_csv, DataFrame, melt, crosstab
+
 
 class Thermistor(object):
     """
@@ -16,10 +22,10 @@ class Thermistor(object):
         Read a csv that gives the name of the thermistor in each channel
         """
         names = read_csv(file)
-        self.channelNames = {x:y for (x,y) in zip(names.ix[:,0], names.ix[:,0])}
-        mes = {x:y for (x,y) in zip(a.ix[:,0], a.ix[:,1])}
+        self.channelNames = {x:y for (x, y) in zip(names.ix[:, 0], names.ix[:, 1])}
 
-    def channelName(self, channel):
+
+    def getChannelName(self, channel):
         """
         Get name of thermistor in channel.  Uses a csv to store names which allows for
         the replacement of thermistors over time if any burn out
@@ -56,7 +62,7 @@ class Thermistor(object):
 
     def calculateUncertainty(self, res, thermistor):
         """
-        calculates uncertainty on thermistor given
+        calculates uncertainty on thermistor given a resistance and the thermistor name
         """
         if self.calibration[thermistor]:
             C = self.calibration[thermistor]
@@ -129,6 +135,184 @@ def getChannelName(channel):
     return "T17-S{}C{}-{}".format(str(slot), str(cable), str(k).zfill(3))
 
 
-def processColumn(result_basename, cfgdir):
-    pass
-    # convert
+class ColumnExperiment(object):
+    # 275mm from top of ring to midpoint of lowest thermistor.
+    # 2 cm thermistor spacing
+    ROW_HEIGHTS = dict(zip(range(1, 24), np.arange(44. + 2.75, -2. + 2.75, -2)))
+
+    def __init__(self, raw_data, cfg_dir, soil_height):
+        self.soil_height = soil_height # height of top of soil in column
+        self.cfg_dir = cfg_dir
+        self.raw_data = raw_data
+        self.experiment = re.sub("_[tr][me][ps]\\..*$", "", path.basename(self.raw_data))
+        self.output_dir = path.join(path.dirname(self.raw_data), self.experiment)
+
+        # Define height of each row index
+        self._read_config_dir(cfg_dir)
+
+    def _read_config_dir(self, cfg_dir):
+        """
+        Looks for the following configuration files and reads them into dictionaries:
+        thermistorNames.csv
+        thermistorPosition.csv
+        """
+        f = listdir(cfg_dir)
+
+        # find calibration files in configuration directory
+        f_names    = self.__find_in_list(f, "thermistorNames")
+        f_position = self.__find_in_list(f, "thermistorPosition")
+
+        # create dictionaries from csv's
+        names_data = read_csv(path.join(cfg_dir, f_names[0]))
+        self.names = dict(zip(names_data.ix[:, 0], names_data.ix[:, 1]))
+        pos_data = read_csv(path.join(cfg_dir, f_position[0]))
+        self.position = dict(zip(pos_data.ix[:, 1], pos_data.ix[:, 0])) # 'reversed' column index order
+
+    def getThermistorDepth(self, thermistor_name):
+        ''' get thermistor depth relative to soil surface'''
+        therm_pos    = self.position[thermistor_name]
+        therm_row    = int(str(therm_pos)[1:3])
+        therm_height = self.ROW_HEIGHTS[therm_row]
+        therm_depth  = self.soil_height - therm_height
+
+        return(therm_depth)
+
+    def getThermistorColumn(self, thermistor_name):
+        ''' get column index of thermistor in tube'''
+        therm_pos    = self.position[thermistor_name]
+        therm_col    = int(str(therm_pos)[0])
+
+        return(therm_col)
+
+    @staticmethod
+    def __find_in_list(lst, pattern):
+        '''get an item in a list by regex matching '''
+        r = re.compile(pattern)
+        found = list(filter(r.match, lst))
+        return(found)
+
+    def __create_output_dir(self):
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
+        else:
+            print("output directory already exists!")
+
+    def __copy_config(self):
+        dest = path.join(self.output_dir, "cfg")
+        shutil.copytree(self.cfg_dir, dest)
+
+    def __copy_rawdata(self):
+        # copy raw resistance data
+        res = re.sub("tmp", "res", self.raw_data)
+        shutil.copyfile(res, path.join(self.output_dir, path.basename(res)))
+
+        # copy raw temperature data
+        tmp = self.raw_data
+        shutil.copyfile(tmp, path.join(self.output_dir, path.basename(tmp)))
+
+    def __zip_output_dir(self):
+        pass
+
+    def _rename_column(self, column_name):
+        if (re.match("Time", column_name) or
+            re.match("upper", column_name) or
+            re.match("lower", column_name)):
+            return(column_name)
+
+        stdev = None
+        if (re.match(".*_stdev$", column_name)):
+            column_name = re.sub("_stdev$", "", column_name)
+            stdev = 1
+
+        D = self.getThermistorDepth(column_name) * 10 # convert to mm
+        C = self.getThermistorColumn(column_name)
+
+        newname = "C{:.0f}D{:.0f}".format(C, D)
+        if stdev:
+            newname = newname + "_stdev"
+        return(newname)
+
+    def __process_file(self):
+        # read data
+        data = read_csv(self.raw_data)
+        print(data)
+        print(data.columns)
+
+        # rename columns
+        data.rename(columns = lambda x: self._rename_column(x), inplace=True)
+
+        # save
+        file_out = re.sub("[tr][em][ps]\\.", "processed.", path.basename(self.raw_data))
+
+
+        data.to_csv(path.join(self.output_dir, file_out), index=False)
+
+    def processFile(self, output_file = None):
+        # read data
+        df = read_csv(self.raw_data)
+
+        # reshape data
+        df = melt(df, id_vars=['Timestamp'])
+
+        # create new columns
+        df['position'] = [self._rename_column(x) for x in df['variable']]
+        df['depth'] = [re.sub("C\dD([^\_]*)[^0-9]*", "\\1", x) if re.match("C.*D.*", x) else -999 for x in df['position']]
+        df['column'] = [re.sub("C(\d).*", "\\1", x) if re.match("C.*D.*", x) else -999 for x in df['position']]
+        df['meas_type'] = ["uncertainty" if re.match(".*stdev", x) else "measurement" for x in df['position']]
+
+        # homogenize position and variable columns in preparation for unstacking
+        df['position'] = [re.sub('_stdev', "", x) for x in df['position']]
+        df['variable'] = [re.sub('_stdev', "", x) for x in df['variable']]
+
+        # reshape (unstack) data
+        df = a.set_index(['Timestamp','position', 'variable', 'depth', 'column', 'meas_type'])
+        df = df.unstack(5)  # 5 corresponds to the last ('meas_type') column
+
+        # define output column names
+        df = DataFrame(df.to_records()) # flatten column names
+        df.columns = ['Timestamp', 'position', 'name', 'depth', 'column', 'value', 'uncertainty']
+
+        # save file
+        if output_file is None:
+            output_file = re.sub("[tr][em][ps]\\.", "processed.", path.basename(self.raw_data))
+            output_file = path.join(self.output_dir, output_file
+
+        df.to_csv(output_file), index=False)
+
+    def processColumn(self):
+        self.__create_output_dir()
+        self.__copy_rawdata()
+        self.__copy_config()
+        self.processFile()
+
+        self.__zip_output_dir
+        return(True)
+
+C = ColumnExperiment("C:\\Users\\A139\\Documents\\2018-07-06_FirstRun_tmp.csv", "C:\git\GeoCryoLabPy\data\columnconfig", 46)
+
+# print(C.names[101])
+# print(C.position['T17-S3C6-055'])
+# print(C.getThermistorColumn('T17-S3C6-055'))
+# print(C.getThermistorDepth('T17-S3C6-055'))
+C.processColumn()
+
+
+# a = read_csv("C:\Users\A139\Desktop\experiments\dummy_data6\dummy_data6_processed.csv")
+# a = melt(a, id_vars=['Timestamp'])
+# a['position'] = [C._rename_column(x) for x in a['variable']]
+# a['depth'] = [re.sub("C\dD([^\_]*)[^0-9]*", "\\1", x) if re.match("C.*D.*", x) else -999 for x in a['position']]
+# a['column'] = [re.sub("C(\d).*", "\\1", x) if re.match("C.*D.*", x) else -999 for x in a['position']]
+# a['meas_type'] = ["Uncertainty" if re.match(".*stdev", x) else "Measurement" for x in a['position']]
+
+# a['position'] = [re.sub('_stdev', "", x) for x in a['position']]
+# a['variable'] = [re.sub('_stdev', "", x) for x in a['variable']]
+# q = a.set_index(['Timestamp','position', 'variable', 'depth', 'column', 'meas_type'])
+# q = q.unstack(5)  # 5 corresponds to the last ('meas_type') column
+# q = DataFrame(q.to_records()) # flatten column names
+# q.columns = ['Timestamp', 'position', 'name', 'depth', 'column', 'value', 'uncertainty']
+
+# # save
+# q.to_csv("C:/Users/A139/out.csv")
+
+
+
