@@ -68,7 +68,7 @@ class Thermistor(object):
             C = self.calibration[thermistor]
             keys = ['a','b','c','d', 'uncert_a', 'uncert_b', 'uncert_c', 'uncert_d', 'R0']
             (a,b,c,d, uncert_a, uncert_b, uncert_c, uncert_d,R0) = [C[x] for x in keys]
-            Tu = self.func(res, unc.ufloat(a, uncert_a*2), unc.ufloat(b, uncert_b*2),
+            Tu = self.ufunc(res, unc.ufloat(a, uncert_a*2), unc.ufloat(b, uncert_b*2),
                          unc.ufloat(c, uncert_c*2), unc.ufloat(d, uncert_d*2), R0)
             return unc.std_dev(Tu)
         else:
@@ -81,6 +81,19 @@ class Thermistor(object):
             T temperature in
             a,b,c,d are calibration parameters
         """
+        x = R / R0
+        T = 1 / (a + b * np.log(x) + c * np.log(x)**2 + d * np.log(x)**3)
+        return T
+
+    @staticmethod
+    def ufunc(R, a, b, c, d, R0):
+        """
+        Args:
+            T temperature in
+            a,b,c,d are calibration parameters
+        """
+        R = unc.ufloat(R, 0.12)
+        R0 = unc.ufloat(R0, 0.12)
         x = R / R0
         T = 1 / (a + b * np.log(x) + c * np.log(x)**2 + d * np.log(x)**3)
         return T
@@ -313,6 +326,3 @@ C.processColumn()
 
 # # save
 # q.to_csv("C:/Users/A139/out.csv")
-
-
-
