@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import datetime
+import matplotlib.dates as mdates
 from scipy import interpolate
 from pandas import DataFrame, read_csv, to_datetime
 
@@ -24,39 +25,119 @@ class ColumnPlotter:
         self.out = self.data[self.data['column'] == 8]    # exterior (jacket) theristors
         self.aux = self.data[self.data['column'] == -999] # auxiliary temperatures
 
-    def contourPlot(self):
-        """ produces an interpolated depth - time plot """
-        df = self.tmp.groupby(['Timestamp', 'depth'], as_index=False).mean() # depth-averages
-        df.drop(['column'], axis = 1) # no longer relevant
+    def __autoclean(self, df, cutoff = -40):
+        """ remove any depths with ANY sensor dropouts (temperature below cutoff)"""
+         # find positions with dropouts
+        dropouts = set(df['position'][df['value'] < cutoff])
+         
+        # get rid of 'em
+        out = df.drop(df[df.position.isin(dropouts)].index, inplace =  False)
+        return(out)
 
+    def contourPlot(self, label=True, contour=True):
+        """ produces an interpolated depth - time plot """
+        # make copy of data so it doesn't interfere, and remove any dropouts
+        df = self.__autoclean(self.tmp)
+
+        # remove unnecessary columns
+        df.drop(['column'], axis = 1, inplace = True)
+        df.drop(['uncertainty'], axis = 1, inplace = True)
+        df.drop(['position'], axis = 1, inplace = True)
+        df.drop(['name'], axis = 1, inplace = True)
+
+        # get depth-averaged values
+        #df = self.tmp.groupby(['Timestamp', 'depth'], as_index=False).mean() # depth-averages
+        df = df.groupby(['Timestamp', 'depth'], as_index=False).agg(np.nanmean)
+
+        # reshape data into "wide" format
+        d = df.set_index(['depth', 'Timestamp'])
+        d = d.unstack()
+        
+        # extract x,y and z (array) values
+        X = to_datetime(list(d.columns.levels[1]))
+        Y = d.index
+        Z = np.array(d)
+        
+        # set up plot
+        fig = plt.figure(figsize=(10, 6))
+        ax1 = fig.add_subplot(111)
+        ax1.margins(y = 2)
+        clev = np.arange(np.nanmin(Z), np.nanmax(Z), 1)
+        
+        # add data
+        cs = ax1.contourf(X, Y, Z,  levels=clev, cmap=plt.cm.coolwarm)
+        cb = fig.colorbar(cs, ticks = np.arange(0,25,5))
+        
+        if contour:
+            cs2 = ax1.contour(X, Y, Z, levels = np.arange(-50, 50, 5), colors='k', linewidths = 1)
+            if label:
+                plt.clabel(cs2, fontsize=8, inline=1, fmt="%1.0f")
+        
+        # set up x and y axis ticks
+        ax1.xaxis.set_major_locator(mdates.DayLocator())
+        ax1.xaxis.set_major_formatter(mdates.DateFormatter("%m/%d           "))
+        ax1.xaxis.set_minor_locator(mdates.HourLocator(interval = 6))
+        ax1.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
+        plt.setp(ax1.xaxis.get_minorticklabels(), rotation=70)
+        plt.setp(ax1.xaxis.get_majorticklabels(), rotation=70)
+        plt.ylim(max(Y), min(Y))
+        
+        # axis labels
+        ax1.set_xlabel('Time')
+        ax1.set_ylabel('Depth (cm)')
+        plt.subplots_adjust(bottom = 0.2, top = 0.95, left = 0.08, right = 0.95)
+        
+        plt.show()
 
     def threeD(self):
         """ an interactive surface 3d plot"""
         pass
 
 
-df = read_csv(r"C:\Users\A139\Documents\2018-07-06_FirstRun\2018-07-06_FirstRun_processed.csv")
-df['Timestamp'] = to_datetime(df['Timestamp'])
+# X = ColumnPlotter(r"E:\Users\Nick\Downloads\2018-07-06_FirstRun_processed.csv")
+# X.contourPlot()
+# df = read_csv(r"E:\Users\Nick\Downloads\2018-07-06_FirstRun_processed.csv")
+# df['Timestamp'] = to_datetime(df['Timestamp'])
 
-df = df[df['column'].between(1, 6)]
-df['value'][df['value'] < - 100] = np.nan
-df = df.groupby(['Timestamp', 'depth'], as_index=False).mean()
-df.drop(['column'], axis = 1)
+# df = df[df['column'].between(1, 6)]
+# df.drop(['column'], axis = 1, inplace = True)
+# df.drop(['uncertainty'], axis = 1, inplace = True)
+# df.drop(['position'], axis = 1, inplace = True)
+# df.drop(['name'], axis = 1, inplace = True)
 
-df = df.iloc[::10, :]
-X = df['Timestamp']
-Y = df['depth']
-Z = df['value']
+# df['value'][df['value'] < - 40] = np.nan
+# #df = df.groupby(['Timestamp', 'depth'], as_index=False).mean()
+# df = df.groupby(['Timestamp', 'depth'], as_index=False).agg(np.nanmean)
 
-xi = np.linspace(X.min().value, X.max().value, 100)
-yi = np.linspace(Y.min(), Y.max(), 100)
 
-xi, yi = np.meshgrid(xi, yi)
-rbf = interpolate.Rbf(X, Y, Z, function='linear')
-zi = rbf(xi, yi)
-xi = [to_datetime(q) for q in xi]
-plt.figure()
-CS = plt.contour(xi, yi, zi)
-plt.show()
-plt.clabel(CS, inline=1, fontsize=10)
-plt.title('Simplest default with labels')
+# df['depth'] = df['depth']
+# d = df.set_index(['depth', 'Timestamp'])
+# d = d.unstack()
+
+# X = to_datetime(list(d.columns.levels[1]))
+# Y = d.index
+# Z = np.array(d) 
+
+
+# fig = plt.figure(figsize=(10, 6))
+# ax1 = fig.add_subplot(111)
+# ax1.margins(y = 2)
+# clev = np.arange(np.nanmin(Z), np.nanmax(Z), 1)
+# cs = ax1.contourf(X, Y, Z,  levels=clev, cmap=plt.cm.coolwarm)
+# cb = fig.colorbar(cs, ticks = np.arange(0,25,5))
+# cs2 = ax1.contour(X, Y, Z, levels = np.arange(-50, 50, 5), colors='k', linewidths = 1, inline_spacing=20)
+# plt.clabel(cs2, fontsize=8, inline=1, fmt="%1.0f")
+# ax1.set_xlabel('Time')
+# ax1.set_ylabel('Depth (cm)')
+# ax1.xaxis.set_major_locator(mdates.DayLocator())
+# ax1.xaxis.set_major_formatter(mdates.DateFormatter("%m/%d           "))
+# ax1.xaxis.set_minor_locator(mdates.HourLocator(interval = 6))
+# ax1.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
+# plt.setp(ax1.xaxis.get_minorticklabels(), rotation=70)
+# plt.setp(ax1.xaxis.get_majorticklabels(), rotation=70)
+# plt.subplots_adjust(bottom = 0.2, top = 0.95, left = 0.08, right = 0.95)
+# plt.ylim(max(Y), min(Y))
+
+# plt.show()
+# dropouts = set(df['position'][df['value'] < -40])
+
