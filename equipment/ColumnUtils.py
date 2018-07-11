@@ -6,7 +6,7 @@ from os import path, listdir
 import numpy as np
 import uncertainties as unc
 
-from pandas import read_csv, DataFrame, melt, crosstab
+from pandas import read_csv, DataFrame, melt
 
 
 class Thermistor(object):
@@ -211,6 +211,7 @@ class ColumnExperiment(object):
         shutil.copyfile(tmp, path.join(self.output_dir, path.basename(tmp)))
 
     def __zip_output_dir(self):
+        print('not implemented yet')
         pass
 
     def _rename_column(self, column_name):
@@ -232,20 +233,6 @@ class ColumnExperiment(object):
             newname = newname + "_stdev"
         return(newname)
 
-    def __process_file(self):
-        # read data
-        data = read_csv(self.raw_data)
-        print(data)
-        print(data.columns)
-
-        # rename columns
-        data.rename(columns = lambda x: self._rename_column(x), inplace=True)
-
-        # save
-        file_out = re.sub("[tr][em][ps]\\.", "processed.", path.basename(self.raw_data))
-
-
-        data.to_csv(path.join(self.output_dir, file_out), index=False)
 
     def processFile(self, output_file = None):
         # read data
@@ -265,7 +252,7 @@ class ColumnExperiment(object):
         df['variable'] = [re.sub('_stdev', "", x) for x in df['variable']]
 
         # reshape (unstack) data
-        df = a.set_index(['Timestamp','position', 'variable', 'depth', 'column', 'meas_type'])
+        df = df.set_index(['Timestamp','position', 'variable', 'depth', 'column', 'meas_type'])
         df = df.unstack(5)  # 5 corresponds to the last ('meas_type') column
 
         # define output column names
@@ -275,26 +262,30 @@ class ColumnExperiment(object):
         # save file
         if output_file is None:
             output_file = re.sub("[tr][em][ps]\\.", "processed.", path.basename(self.raw_data))
-            output_file = path.join(self.output_dir, output_file
+            output_file = path.join(self.output_dir, output_file)
 
-        df.to_csv(output_file), index=False)
+        df.to_csv(output_file, index=False)
 
-    def processColumn(self):
+    def processColumn(self, copycfg = True, copyraw = True, zip = False):
         self.__create_output_dir()
-        self.__copy_rawdata()
-        self.__copy_config()
+        if copyraw:
+            self.__copy_rawdata()
+        if copycfg:
+            self.__copy_config()
         self.processFile()
 
-        self.__zip_output_dir
+        if zip:
+            self.__zip_output_dir()
+
         return(True)
 
-C = ColumnExperiment("C:\\Users\\A139\\Documents\\2018-07-06_FirstRun_tmp.csv", "C:\git\GeoCryoLabPy\data\columnconfig", 46)
+#C = ColumnExperiment("C:\\Users\\A139\\Documents\\2018-07-06_FirstRun_tmp.csv", "C:\git\GeoCryoLabPy\data\columnconfig", 46)
 
 # print(C.names[101])
 # print(C.position['T17-S3C6-055'])
 # print(C.getThermistorColumn('T17-S3C6-055'))
 # print(C.getThermistorDepth('T17-S3C6-055'))
-C.processColumn()
+#C.processColumn()
 
 
 # a = read_csv("C:\Users\A139\Desktop\experiments\dummy_data6\dummy_data6_processed.csv")
