@@ -204,6 +204,7 @@ for t in range(0, duration + readDelay, readDelay):
         daqVals   = daq.readResistances(channelList)
 
         daqValsTmp = [Therm.calculateTemperature(res, name) for (res, name) in izip(daqVals, thermistorNames)]
+        daqValsTmp = [x - 273.15 for x in daqValsTmp] # convert to degrees C
         err = [Therm.calculateUncertainty(res, name) for (res, name) in izip(daqVals, thermistorNames)]
         daqValsTmp = [val for pair in izip(daqValsTmp, err) for val in pair]
         daqVals      = ",".join(map(str, daqVals))
