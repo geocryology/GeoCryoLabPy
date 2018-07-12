@@ -40,7 +40,8 @@ class LaudaRP845:
         self.conn = None
         self.err  = False
         self.bathID = None
-        self.getLimits()
+        self.temperatureLimits = None
+
 
     # Connects and opens serial connection to specified port
     # port must be an integer corresponding to the desired port (e.g. 12 = COM12)
@@ -196,12 +197,12 @@ class LaudaRP845:
     def setSetpoint(self, setpoint):
         """Set bath setpoint."""
 
-        if setpoint < self.temperatureLimits[0]:
-            self.warning("Setpoint '{}' too low, min = {}. Setpoint unchanged.".format(setpoint, self.temperatureLimits[0]))
+        if setpoint < self.getLimits()[0]:
+            self.warning("Setpoint '{}' too low, min = {}. Setpoint unchanged.".format(setpoint, self.getLimits()[0]))
             return False
 
-        if setpoint > self.temperatureLimits[1]:
-            self.warning("Setpoint '{}' too high, max = {}. Setpoint unchanged.".format(setpoint, self.temperatureLimits[1]))
+        if setpoint > self.getLimits()[1]:
+            self.warning("Setpoint '{}' too high, max = {}. Setpoint unchanged.".format(setpoint, self.getLimits()[1]))
             return False
 
         # convert setpoint to string with format xxx.xx (lauda desired format)
@@ -373,9 +374,9 @@ class LaudaRP845:
 
         if recalculate or not self.temperatureLimits:
             TiL = float(self.sendCmd('in sp 05')[0].strip())
-            TiL = np.max([TiL, self.SETPOINT_MIN])
+            TiL = max([TiL, self.SETPOINT_MIN])
             TiH = float(self.sendCmd('in sp 04')[0].strip())
-            TiH = np.max([TiH, self.SETPOINT_MAX])
+            TiH = min([TiH, self.SETPOINT_MAX])
 
             self.temperatureLimits = (TiL, TiH)
 
