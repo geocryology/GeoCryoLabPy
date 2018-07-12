@@ -143,7 +143,9 @@ def getChannelName(channel):
 
 class ColumnExperiment(object):
     # 275mm from top of ring to midpoint of lowest thermistor.
-    # 2 cm thermistor spacing
+    # 230mm from top of ring to top of lower brass plate
+    # 2 cm thermistor spacing (offset)
+
     ROW_HEIGHTS = dict(zip(range(1, 24), np.arange(44. + 2.75, -2. + 2.75, -2)))
 
     def __init__(self, raw_data, cfg_dir, soil_height):
@@ -264,6 +266,10 @@ class ColumnExperiment(object):
         # define output column names
         df = DataFrame(df.to_records()) # flatten column names
         df.columns = ['Timestamp', 'position', 'name', 'depth', 'column', 'value', 'uncertainty']
+
+        # input depths for upper and lower plate temperatures
+        df['depth'][df['name'] == 'upperExtTemp'] = 0
+        df['depth'][df['name'] == 'lowerExtTemp'] = self.soil_height * 10 - 230
 
         # save file
         if output_file is None:
