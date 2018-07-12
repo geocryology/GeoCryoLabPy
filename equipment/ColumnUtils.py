@@ -120,14 +120,14 @@ def getChannels(channelList):
             lo, hi = map(int, rng.split(":"))
             for channel in range(lo, hi+1):
                 if channel not in validChannels:
-                    print "Invalid channel {}".format(channel)
+                    print("Invalid channel {}".format(channel))
                     exit(1)
                 channels.add(channel)
 
        # For singletons
         else:
             if int(rng) not in validChannels:
-                print "Invalid channel {}".format(channel)
+                print("Invalid channel {}".format(channel))
                 exit(1)
             channels.add(int(rng))
 
