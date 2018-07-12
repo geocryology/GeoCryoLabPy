@@ -29,7 +29,7 @@ class ColumnPlotter:
         """ remove any depths with ANY sensor dropouts (temperature below cutoff)"""
          # find positions with dropouts
         dropouts = set(df['position'][df['value'] < cutoff])
-         
+
         # get rid of 'em
         out = df.drop(df[df.position.isin(dropouts)].index, inplace =  False)
         return(out)
@@ -52,27 +52,27 @@ class ColumnPlotter:
         # reshape data into "wide" format
         d = df.set_index(['depth', 'Timestamp'])
         d = d.unstack()
-        
+
         # extract x,y and z (array) values
         X = to_datetime(list(d.columns.levels[1]))
         Y = d.index
         Z = np.array(d)
-        
+
         # set up plot
         fig = plt.figure(figsize=(10, 6))
         ax1 = fig.add_subplot(111)
-        ax1.margins(y = 2)
+        #ax1.margins(y = 2)
         clev = np.arange(np.nanmin(Z), np.nanmax(Z), 1)
-        
+
         # add data
         cs = ax1.contourf(X, Y, Z,  levels=clev, cmap=plt.cm.coolwarm)
         cb = fig.colorbar(cs, ticks = np.arange(0,25,5))
-        
+
         if contour:
             cs2 = ax1.contour(X, Y, Z, levels = np.arange(-50, 50, 5), colors='k', linewidths = 1)
             if label:
                 plt.clabel(cs2, fontsize=8, inline=1, fmt="%1.0f")
-        
+
         # set up x and y axis ticks
         ax1.xaxis.set_major_locator(mdates.DayLocator())
         ax1.xaxis.set_major_formatter(mdates.DateFormatter("%m/%d           "))
@@ -81,12 +81,12 @@ class ColumnPlotter:
         plt.setp(ax1.xaxis.get_minorticklabels(), rotation=70)
         plt.setp(ax1.xaxis.get_majorticklabels(), rotation=70)
         plt.ylim(max(Y), min(Y))
-        
+
         # axis labels
         ax1.set_xlabel('Time')
         ax1.set_ylabel('Depth (cm)')
         plt.subplots_adjust(bottom = 0.2, top = 0.95, left = 0.08, right = 0.95)
-        
+
         plt.show()
 
     def threeD(self):
@@ -94,8 +94,8 @@ class ColumnPlotter:
         pass
 
 
-# X = ColumnPlotter(r"E:\Users\Nick\Downloads\2018-07-06_FirstRun_processed.csv")
-# X.contourPlot()
+X = ColumnPlotter(r"C:\Users\A139\Documents\2018-07-06_FirstRun\2018-07-06_FirstRun_processed.csv")
+X.contourPlot()
 # df = read_csv(r"E:\Users\Nick\Downloads\2018-07-06_FirstRun_processed.csv")
 # df['Timestamp'] = to_datetime(df['Timestamp'])
 
@@ -116,7 +116,7 @@ class ColumnPlotter:
 
 # X = to_datetime(list(d.columns.levels[1]))
 # Y = d.index
-# Z = np.array(d) 
+# Z = np.array(d)
 
 
 # fig = plt.figure(figsize=(10, 6))
