@@ -29,7 +29,7 @@ class ColumnPlotter:
         """ remove any depths with ANY sensor dropouts (temperature below cutoff)"""
          # find positions with dropouts
         dropouts = set(df['position'][df['value'] < cutoff])
-         
+
         # get rid of 'em
         out = df.drop(df[df.position.isin(dropouts)].index, inplace =  False)
         return(out)
@@ -52,27 +52,26 @@ class ColumnPlotter:
         # reshape data into "wide" format
         d = df.set_index(['depth', 'Timestamp'])
         d = d.unstack()
-        
+
         # extract x,y and z (array) values
         X = to_datetime(list(d.columns.levels[1]))
         Y = d.index
         Z = np.array(d)
-        
+
         # set up plot
         fig = plt.figure(figsize=(10, 6))
         ax1 = fig.add_subplot(111)
-        ax1.margins(y = 2)
         clev = np.arange(np.nanmin(Z), np.nanmax(Z), 1)
-        
+
         # add data
         cs = ax1.contourf(X, Y, Z,  levels=clev, cmap=plt.cm.coolwarm)
         fig.colorbar(cs, ticks = np.arange(0,25,5))
-        
+
         if contour:
             cs2 = ax1.contour(X, Y, Z, levels = np.arange(-50, 50, 5), colors='k', linewidths = 1)
             if label:
                 plt.clabel(cs2, fontsize=8, inline=1, fmt="%1.0f")
-        
+
         # set up x and y axis ticks
         ax1.xaxis.set_major_locator(mdates.DayLocator())
         ax1.xaxis.set_major_formatter(mdates.DateFormatter("%m/%d           "))
@@ -81,14 +80,14 @@ class ColumnPlotter:
         plt.setp(ax1.xaxis.get_minorticklabels(), rotation=70)
         plt.setp(ax1.xaxis.get_majorticklabels(), rotation=70)
         plt.ylim(max(Y), min(Y))
-        
+
         # axis labels
         ax1.set_xlabel('Time')
         ax1.set_ylabel('Depth (cm)')
         plt.subplots_adjust(bottom = 0.2, top = 0.95, left = 0.08, right = 0.95)
-        
+
         plt.show()
-    
+
     def meanPlot(self, st_hr = 40, end_hr = 64, trumpet=True):
          # get thermistor and plate data.  remove any droupouts
         bndry = self.aux[(self.aux['name'] == 'upperExtTemp') | (self.aux['name'] == 'lowerExtTemp')]
@@ -101,11 +100,11 @@ class ColumnPlotter:
         df.drop(['position'], axis = 1, inplace = True)
         df.drop(['name'], axis = 1, inplace = True)
 
-        # take time subset of data 
+        # take time subset of data
         st = df['Timestamp'][0] + Timedelta(hours = st_hr)
         en = df['Timestamp'][0] + Timedelta(hours = end_hr)
         df = df[df['Timestamp'].between(st, en)]
-        
+
         # get depth averages
         Tmax = df.groupby(['depth'], as_index = False).agg(np.nanmax)
         Tmin = df.groupby(['depth'], as_index = False).agg(np.nanmin)
@@ -120,7 +119,7 @@ class ColumnPlotter:
         Y = df['depth']
         ax1.plot(X, Y, color='k')
         if trumpet:
-            ax1.fill_betweenx(Tmax['depth'], Tmin['value'], Tmax['value'], color = (.8, .8, .8, 0.5)) 
+            ax1.fill_betweenx(Tmax['depth'], Tmin['value'], Tmax['value'], color = (.8, .8, .8, 0.5))
             ax1.plot(Tmax['value'], Tmax['depth'], color = 'r')
             ax1.plot(Tmin['value'], Tmin['depth'], color = 'b')
 
@@ -140,7 +139,7 @@ class ColumnPlotter:
 
 
 X = ColumnPlotter(r"C:\Users\A139\Documents\2018-07-06_FirstRun\2018-07-06_FirstRun_processed.csv")
-X.contourPlot()
+X.meanPlot()
 # df = read_csv(r"E:\Users\Nick\Downloads\2018-07-06_FirstRun_processed.csv")
 # df['Timestamp'] = to_datetime(df['Timestamp'])
 
