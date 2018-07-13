@@ -5,6 +5,7 @@ import re
 from os import path, listdir
 import numpy as np
 import uncertainties as unc
+from uncertainties.umath import log as ulog
 
 from pandas import read_csv, DataFrame, melt
 
@@ -88,7 +89,7 @@ class Thermistor(object):
             a,b,c,d are calibration parameters
         """
         x = R / R0
-        T = 1 / (a + b * np.log(x) + c * np.log(x)**2 + d * np.log(x)**3)
+        T = 1 / (a + b * ulog(x) + c * ulog(x)**2 + d * ulog(x)**3)
         return T
 
     def hasCalibration(self, thermistors):
