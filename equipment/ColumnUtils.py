@@ -269,8 +269,8 @@ class ColumnExperiment(object):
         df.columns = ['Timestamp', 'position', 'name', 'depth', 'column', 'value', 'uncertainty']
 
         # input depths for upper and lower plate temperatures
-        df['depth'][df['name'] == 'upperExtTemp'] = 0
-        df['depth'][df['name'] == 'lowerExtTemp'] = self.soil_height * 10 - 230
+        df.loc[df['name'] == 'upperExtTemp', 'depth'] = 0
+        df.loc[df['name'] == 'lowerExtTemp', 'depth'] = self.soil_height * 10 - 230
 
         # save file
         if output_file is None:
