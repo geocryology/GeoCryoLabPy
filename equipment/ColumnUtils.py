@@ -270,7 +270,7 @@ class ColumnExperiment(object):
 
         # input depths for upper and lower plate temperatures
         df.loc[df['name'] == 'upperExtTemp', 'depth'] = 0
-        df.loc[df['name'] == 'lowerExtTemp', 'depth'] = self.soil_height * 10 - 230
+        df.loc[df['name'] == 'lowerExtTemp', 'depth'] = self.soil_height * 10 - 23
 
         # save file
         if output_file is None:
