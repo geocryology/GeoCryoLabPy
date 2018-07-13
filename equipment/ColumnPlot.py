@@ -4,6 +4,7 @@ import datetime
 import matplotlib.dates as mdates
 from scipy import interpolate
 from pandas import DataFrame, read_csv, to_datetime, concat, Timedelta
+from sys import version_info
 
 class ColumnPlotter:
     """ plotting various  """
@@ -28,10 +29,10 @@ class ColumnPlotter:
     def __autoclean(self, df, cutoff = -40):
         """ remove any depths with ANY sensor dropouts (temperature below cutoff)"""
          # find positions with dropouts
-        dropouts = set(df['position'][df['value'] < cutoff])
+        self.dropouts = set(df.loc[df['value'] < cutoff, 'position'])
 
         # get rid of 'em
-        out = df.drop(df[df.position.isin(dropouts)].index, inplace =  False)
+        out = df.drop(df[df.position.isin(self.dropouts)].index, inplace =  False)
         return(out)
 
     def contourPlot(self, label=True, contour=True):
@@ -100,15 +101,21 @@ class ColumnPlotter:
         df.drop(['position'], axis = 1, inplace = True)
         df.drop(['name'], axis = 1, inplace = True)
 
-        # take time subset of data
+        # take time subset of data then drop timestamp column
         st = df['Timestamp'][0] + Timedelta(hours = st_hr)
         en = df['Timestamp'][0] + Timedelta(hours = end_hr)
         df = df[df['Timestamp'].between(st, en)]
+        df.drop(['Timestamp'], axis = 1, inplace = True)
 
         # get depth averages
-        Tmax = df.groupby(['depth'], as_index = False).agg(np.nanmax)
-        Tmin = df.groupby(['depth'], as_index = False).agg(np.nanmin)
-        df = df.groupby(['depth'], as_index = False).agg(np.nanmean)
+        if version_info[0] > 3: # don't know why this doesn't work with v 2.x
+            Tmax = df.groupby(['depth'], as_index = False).agg(np.nanmax)
+            Tmin = df.groupby(['depth'], as_index = False).agg(np.nanmin)
+            df = df.groupby(['depth'], as_index = False).agg(np.nanmean)
+        else:
+            Tmax = df.groupby(['depth'], as_index = False)['value'].max()
+            Tmin = df.groupby(['depth'], as_index = False)['value'].min()
+            df = df.groupby(['depth'], as_index = False)['value'].mean()
 
         # set up plot
         fig = plt.figure(figsize = (10, 6))
@@ -124,6 +131,7 @@ class ColumnPlotter:
             ax1.plot(Tmin['value'], Tmin['depth'], color = 'b')
 
         ax1.plot([float(X[Y == 0]), float(X[Y == Y.max()])], [0, Y.max()], 'k--', lw=0.5)
+
         plt.ylim(max(Y), min(Y))
 
         # axis labels
@@ -138,9 +146,12 @@ class ColumnPlotter:
 
 
 
-X = ColumnPlotter(r"C:\Users\A139\Documents\2018-07-06_FirstRun\2018-07-06_FirstRun_processed.csv")
-X.meanPlot()
-# df = read_csv(r"E:\Users\Nick\Downloads\2018-07-06_FirstRun_processed.csv")
+X = ColumnPlotter(r"C:\git\GeoCryoLabPy\experiments\2018-07-06_SecondRun\2018-07-06_SecondRun_processed.csv")
+
+# X = ColumnPlotter(r"C:\git\GeoCryoLabPy\experiments\2018-07-06_TestRun\2018-07-06_TestRun_processed.csv")
+X.contourPlot()
+print(X.dropouts)
+# df = read_csv(r"C:\git\GeoCryoLabPy\experiments\2018-07-06_TestRun\2018-07-06_TestRun_processed.csv")
 # df['Timestamp'] = to_datetime(df['Timestamp'])
 
 # df = df[df['column'].between(1, 6)]
@@ -149,8 +160,8 @@ X.meanPlot()
 # df.drop(['position'], axis = 1, inplace = True)
 # df.drop(['name'], axis = 1, inplace = True)
 
-# df['value'][df['value'] < - 40] = np.nan
-# #df = df.groupby(['Timestamp', 'depth'], as_index=False).mean()
+# df.loc[df['value'] < - 40, 'value'] = np.nan
+# df = df.groupby(['depth'], as_index=False).agg(np.nanmax)
 # df = df.groupby(['Timestamp', 'depth'], as_index=False).agg(np.nanmean)
 
 
