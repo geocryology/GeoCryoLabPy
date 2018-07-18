@@ -18,8 +18,10 @@ if __name__ == '__main__':
     parser.add_argument('--sh',  type=float, help="soil height in cm")
     parser.add_argument('--rd',  type=str,   help="path to raw temperature data file")
     parser.add_argument('--cfg', type=str,   help="path to columnconfig directory")
+    parser.add_argument('-f',    action='store_true',   help="overwrite existing directory")
 
     args = parser.parse_args()
 
     C = ColumnExperiment(raw_data = args.rd, cfg_dir = args.cfg, soil_height = args.sh)
+    C.setOverwrite(args.f)
     C.processColumn()
