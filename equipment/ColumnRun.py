@@ -46,6 +46,7 @@ parser = argparse.ArgumentParser(description="Read soil column temperatures from
 
 # Experiment control
 parser.add_argument('--idelay',     default=dflt_initDelay, type=int, help="Time (s) to wait for adjustment to initial setpoint corresponding to f(0) of the temperature control function. This delay is only used once at the start of the experiment (default: 0)")
+parser.add_argument('--duration',   default=None,           type=int, help="How long to measure for (minutes)")
 
 # Cooling plate control
 parser.add_argument('--up',        default=dflt_up,        type=int, help="Enable upper cooling plate 0 = off, 1 = on")
@@ -88,6 +89,11 @@ disc_up     = args.disc_up
 disc_low    = args.disc_low
 channelList = args.channels
 readDelay   = args.rdelay
+
+if args.duration is None:
+    duration = np.max([tstop_up * rep_up, tstop_low * rep_low]) * 60
+else:
+    duration = args.duration * 60 # convert to seconds
 
 if channelList:
     channels     = getChannels(channelList)
@@ -191,7 +197,7 @@ if up:
 if low:
     bathLower.controlProgram("start")
 
-duration = np.max([tstop_up * rep_up, tstop_low * rep_low]) * 60
+
 
 # Start recording
 for t in range(0, duration + readDelay, readDelay):
