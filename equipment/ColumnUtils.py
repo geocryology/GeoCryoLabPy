@@ -155,6 +155,7 @@ class ColumnExperiment(object):
         self.raw_data = raw_data
         self.experiment = re.sub("_[tr][me][ps]\\..*$", "", path.basename(self.raw_data))
         self.output_dir = path.join(path.dirname(self.raw_data), self.experiment)
+        self.overwrite  = False
 
         # Define height of each row index
         self._read_config_dir(cfg_dir)
@@ -201,10 +202,17 @@ class ColumnExperiment(object):
         return(found)
 
     def __create_output_dir(self):
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir)
-        else:
-            print("output directory already exists!")
+        if os.path.exists(self.output_dir):
+            if self.overwrite:
+                shutil.rmtree(self.output_dir)
+            else:
+                print("output directory already exists!  Exiting")
+                exit(1)
+        os.makedirs(self.output_dir)
+
+
+    def setOverwrite(self, permission):
+        self.overwrite = permission
 
     def __copy_config(self):
         dest = path.join(self.output_dir, "cfg")
@@ -291,29 +299,3 @@ class ColumnExperiment(object):
             self.__zip_output_dir()
 
         return(True)
-
-#C = ColumnExperiment("C:\\Users\\A139\\Documents\\2018-07-06_FirstRun_tmp.csv", "C:\git\GeoCryoLabPy\data\columnconfig", 46)
-
-# print(C.names[101])
-# print(C.position['T17-S3C6-055'])
-# print(C.getThermistorColumn('T17-S3C6-055'))
-# print(C.getThermistorDepth('T17-S3C6-055'))
-#C.processColumn()
-
-
-# a = read_csv("C:\Users\A139\Desktop\experiments\dummy_data6\dummy_data6_processed.csv")
-# a = melt(a, id_vars=['Timestamp'])
-# a['position'] = [C._rename_column(x) for x in a['variable']]
-# a['depth'] = [re.sub("C\dD([^\_]*)[^0-9]*", "\\1", x) if re.match("C.*D.*", x) else -999 for x in a['position']]
-# a['column'] = [re.sub("C(\d).*", "\\1", x) if re.match("C.*D.*", x) else -999 for x in a['position']]
-# a['meas_type'] = ["Uncertainty" if re.match(".*stdev", x) else "Measurement" for x in a['position']]
-
-# a['position'] = [re.sub('_stdev', "", x) for x in a['position']]
-# a['variable'] = [re.sub('_stdev', "", x) for x in a['variable']]
-# q = a.set_index(['Timestamp','position', 'variable', 'depth', 'column', 'meas_type'])
-# q = q.unstack(5)  # 5 corresponds to the last ('meas_type') column
-# q = DataFrame(q.to_records()) # flatten column names
-# q.columns = ['Timestamp', 'position', 'name', 'depth', 'column', 'value', 'uncertainty']
-
-# # save
-# q.to_csv("C:/Users/A139/out.csv")
