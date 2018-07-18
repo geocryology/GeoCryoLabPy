@@ -130,8 +130,11 @@ class ColumnPlotter:
             ax1.plot(Tmax['value'], Tmax['depth'], color = 'r')
             ax1.plot(Tmin['value'], Tmin['depth'], color = 'b')
 
-        ax1.plot([float(X[Y == 0]), float(X[Y == Y.max()])], [0, Y.max()], 'k--', lw=0.5)
-
+        if version_info[0] > 3:
+            ax1.plot([float(X[Y == 0]), float(X[Y == Y.max()])], [0, Y.max()], 'k--', lw=0.5)
+        else:
+            print(zip(X,Y))
+            ax1.plot([np.float(X[Y == 0]), np.float(X[Y == Y.max()])], [0, Y.max()], 'k--', lw=0.5)
         plt.ylim(max(Y), min(Y))
 
         # axis labels
@@ -149,50 +152,5 @@ class ColumnPlotter:
 X = ColumnPlotter(r"C:\git\GeoCryoLabPy\experiments\2018-07-06_SecondRun\2018-07-06_SecondRun_processed.csv")
 
 # X = ColumnPlotter(r"C:\git\GeoCryoLabPy\experiments\2018-07-06_TestRun\2018-07-06_TestRun_processed.csv")
-X.contourPlot()
+X.meanPlot()
 print(X.dropouts)
-# df = read_csv(r"C:\git\GeoCryoLabPy\experiments\2018-07-06_TestRun\2018-07-06_TestRun_processed.csv")
-# df['Timestamp'] = to_datetime(df['Timestamp'])
-
-# df = df[df['column'].between(1, 6)]
-# df.drop(['column'], axis = 1, inplace = True)
-# df.drop(['uncertainty'], axis = 1, inplace = True)
-# df.drop(['position'], axis = 1, inplace = True)
-# df.drop(['name'], axis = 1, inplace = True)
-
-# df.loc[df['value'] < - 40, 'value'] = np.nan
-# df = df.groupby(['depth'], as_index=False).agg(np.nanmax)
-# df = df.groupby(['Timestamp', 'depth'], as_index=False).agg(np.nanmean)
-
-
-# df['depth'] = df['depth']
-# d = df.set_index(['depth', 'Timestamp'])
-# d = d.unstack()
-
-# X = to_datetime(list(d.columns.levels[1]))
-# Y = d.index
-# Z = np.array(d)
-
-
-# fig = plt.figure(figsize=(10, 6))
-# ax1 = fig.add_subplot(111)
-# ax1.margins(y = 2)
-# clev = np.arange(np.nanmin(Z), np.nanmax(Z), 1)
-# cs = ax1.contourf(X, Y, Z,  levels=clev, cmap=plt.cm.coolwarm)
-# cb = fig.colorbar(cs, ticks = np.arange(0,25,5))
-# cs2 = ax1.contour(X, Y, Z, levels = np.arange(-50, 50, 5), colors='k', linewidths = 1, inline_spacing=20)
-# plt.clabel(cs2, fontsize=8, inline=1, fmt="%1.0f")
-# ax1.set_xlabel('Time')
-# ax1.set_ylabel('Depth (cm)')
-# ax1.xaxis.set_major_locator(mdates.DayLocator())
-# ax1.xaxis.set_major_formatter(mdates.DateFormatter("%m/%d           "))
-# ax1.xaxis.set_minor_locator(mdates.HourLocator(interval = 6))
-# ax1.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
-# plt.setp(ax1.xaxis.get_minorticklabels(), rotation=70)
-# plt.setp(ax1.xaxis.get_majorticklabels(), rotation=70)
-# plt.subplots_adjust(bottom = 0.2, top = 0.95, left = 0.08, right = 0.95)
-# plt.ylim(max(Y), min(Y))
-
-# plt.show()
-# dropouts = set(df['position'][df['value'] < -40])
-
