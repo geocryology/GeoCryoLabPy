@@ -3,7 +3,7 @@ import numpy as np
 import datetime
 import matplotlib.dates as mdates
 from scipy import interpolate
-from pandas import DataFrame, read_csv, to_datetime, concat, Timedelta
+from pandas import DataFrame, read_csv, to_datetime, concat, Timedelta, to_numeric
 from sys import version_info
 
 class ColumnPlotter:
@@ -34,6 +34,29 @@ class ColumnPlotter:
         # get rid of 'em
         out = df.drop(df[df.position.isin(self.dropouts)].index, inplace =  False)
         return(out)
+    
+    def linearPlot(self, column=1):
+        """ produces a plot with temperature over time for a single column """
+        # make copy of data so it doesn't interfere, and remove any dropouts
+        df = self.__autoclean(self.data)
+
+        # Prepare data 
+        df = df[df['column'] == column]
+        df['depth'] = to_numeric(df['depth'])
+
+        # Prepare list of depths
+        depths = df.depth.unique()
+        depths.sort()
+     
+        # Plot a line for every depth
+        for i in depths:
+            dep = df[df['depth'] == i]
+            plt.plot(dep['Timestamp'], dep['value'], label = i)
+            plt.ylabel('Temperature (C)')
+            plt.xlabel('Time')
+            plt.legend(title = 'Depth (mm)')
+        
+        plt.show()
 
     def contourPlot(self, label=True, contour=True):
         """ produces an interpolated depth - time plot """
