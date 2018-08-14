@@ -243,7 +243,8 @@ for t in range(0, duration + readDelay, readDelay):
         output.write("{},{},{},{},{},{},{},{}\n".format(currentTime, T_up, Text_up, trgt_up, T_low, Text_low, trgt_low, daqValsTmp))
 
     # wait until next measurement instant
-    print('{} Waiting for next read cycle'.format(status).ljust(80)),
+    next_read = datetime.datetime.fromtimestamp((t0 + readDelay)).strftime("%A, %B %d, %H:%M:%S")
+    print('{} Waiting {} seconds for next read cycle at {}'.format(status, readDelay, next_read).ljust(80)),
     time.sleep(readDelay - (time.time() - t0))
 
 # disconnect connected devices
