@@ -66,7 +66,7 @@ class ColumnPlotter:
 
         # add data
         cs = ax1.contourf(X, Y, Z,  levels=clev, cmap=plt.cm.coolwarm)
-        fig.colorbar(cs, ticks = np.arange(0,25,5))
+        fig.colorbar(cs, ticks = np.arange(-25,25,5))
 
         if contour:
             cs2 = ax1.contour(X, Y, Z, levels = np.arange(-50, 50, 5), colors='k', linewidths = 1)
@@ -149,8 +149,3 @@ class ColumnPlotter:
 
 
 
-X = ColumnPlotter(r"C:\git\GeoCryoLabPy\experiments\2018-07-06_SecondRun\2018-07-06_SecondRun_processed.csv")
-
-# X = ColumnPlotter(r"C:\git\GeoCryoLabPy\experiments\2018-07-06_TestRun\2018-07-06_TestRun_processed.csv")
-X.meanPlot()
-print(X.dropouts)
