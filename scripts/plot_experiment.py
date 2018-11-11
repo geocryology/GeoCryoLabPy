@@ -19,13 +19,13 @@ if __name__ == '__main__':
     parser.add_argument('--dir',    type=str,   help="directory to save plots")
     parser.add_argument('--mean',    action='store_true',   help="make a mean plot")
     parser.add_argument('--cont',    action='store_true',   help="make a contour plot")
-
+    parser.add_argument('--set_bnds',action='store_true',   help="use target temperatures for mean plot boundaries", default=False)
     args = parser.parse_args()
 
     P = ColumnPlotter(args.data)
 
     if args.mean:
-        P.meanPlot()
+        P.meanPlot(use_set_bndry=args.set_bnds)
 
     if args.cont:
         P.contourPlot()

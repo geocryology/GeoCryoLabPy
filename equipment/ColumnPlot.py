@@ -34,20 +34,20 @@ class ColumnPlotter:
         # get rid of 'em
         out = df.drop(df[df.position.isin(self.dropouts)].index, inplace =  False)
         return(out)
-    
+
     def linearPlot(self, column=1):
         """ produces a plot with temperature over time for a single column """
         # make copy of data so it doesn't interfere, and remove any dropouts
         df = self.__autoclean(self.data)
 
-        # Prepare data 
+        # Prepare data
         df = df[df['column'] == column]
         df['depth'] = to_numeric(df['depth'])
 
         # Prepare list of depths
         depths = df.depth.unique()
         depths.sort()
-     
+
         # Plot a line for every depth
         for i in depths:
             dep = df[df['depth'] == i]
@@ -55,7 +55,7 @@ class ColumnPlotter:
             plt.ylabel('Temperature (C)')
             plt.xlabel('Time')
             plt.legend(title = 'Depth (mm)')
-        
+
         plt.show()
 
     def contourPlot(self, label=True, contour=True):
@@ -112,8 +112,13 @@ class ColumnPlotter:
 
         plt.show()
 
-    def meanPlot(self, st_hr = 40, end_hr = 64, trumpet=True):
+    def meanPlot(self, st_hr = 40, end_hr = 64, trumpet=True, use_set_bndry=False):
          # get thermistor and plate data.  remove any droupouts
+
+        if use_set_bndry:
+            # force upper and lower boundaries to be set temperature (e.g. if external probes have become unseated)
+            self.aux.loc[(self.aux['name'] == 'upperExtTemp'), 'value'] = self.aux.loc[(self.aux['name'] == 'upperTarget'), 'value'].values
+            self.aux.loc[(self.aux['name'] == 'lowerExtTemp'), 'value'] = self.aux.loc[(self.aux['name'] == 'lowerTarget'), 'value'].values
         bndry = self.aux[(self.aux['name'] == 'upperExtTemp') | (self.aux['name'] == 'lowerExtTemp')]
         df = concat([self.tmp, bndry], axis=0)
         df = self.__autoclean(df)
@@ -156,7 +161,6 @@ class ColumnPlotter:
         if version_info[0] > 3:
             ax1.plot([float(X[Y == 0]), float(X[Y == Y.max()])], [0, Y.max()], 'k--', lw=0.5)
         else:
-            print(zip(X,Y))
             ax1.plot([np.float(X[Y == 0]), np.float(X[Y == Y.max()])], [0, Y.max()], 'k--', lw=0.5)
         plt.ylim(max(Y), min(Y))
 
