@@ -65,3 +65,4 @@ target/
 
 # credential file
 credentials.txt
+/.vscode/settings.json
