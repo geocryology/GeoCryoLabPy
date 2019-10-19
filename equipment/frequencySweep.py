@@ -26,7 +26,7 @@ def configure(fra, nPoints, f1, f2):
         CHAN1
         HOLD
         SWPT LOGF
-        BWAUTO 1
+        BW 10
         POIN {}
         FORM4
         MEAS {{}}
@@ -66,9 +66,11 @@ def measure(fra, powerLevel):
     try:
         duration = fra.query("SWET?").strip()
         t = float(duration)
+        print "Sweep time: {}".format(t)
     except:
         print "failed to convert to float: ", duration
 
+    t0 = time.time()
     # perform sweep, read results
     for channel in channels:
 
@@ -78,7 +80,10 @@ def measure(fra, powerLevel):
         # Make measurement
         t0 = time.time()
         fra.write("SING")
-        time.sleep(t + 2)
+        while (time.time() < t0 + t + 2):
+            print "\rReading Channel {}: {}%".format(channel, int(100 * (time.time() - t0) / (t + 2))),
+            time.sleep(0.125)
+        print "\rReading Channel {}: 100%".format(channel)
 
         # Read data from analyzer
         for fmt in fmts:
@@ -102,7 +107,7 @@ def generateFile(filename, results, freqs, Rs, nPoints, f1, f2, powerLevel):
 
     # write values to file
     filename = "{}_{}dB.csv".format(filename, str(powerLevel).replace(".", "-"))
-    output = open(filename, "w")
+    output = open("march 21 2019/" + filename, "w")
     output.write("Impedance Measurement Performed with an Agilent 4395A Network Analyzer\n")
     output.write("File generated on: {}\n".format(timestamp))
     output.write("Rs = {} ohms\n".format(Rs))
@@ -143,15 +148,16 @@ if __name__ == "__main__":
 
     # default values
     Rs = 50.0
-    nPoints = 801
-    f1 = 100
-    f2 = 100000000
+    nPoints = 201
+    f1 = 10
+    f2 = 50000000
     filename = "out"
 
     # power level in dB, as an array
     # use array of size 1 for single measurement (e.g. [0] for 0 dB)
     # range function easily makes a list of evenly spaced integers
-    powerLevels = range(-10, 11, 2)
+    #powerLevels = range(-10, 11, 2)
+    powerLevels = [0]
 
     if len(sys.argv) != 3:
         print "  Usage: python frequencySweep.py filename Rs"
