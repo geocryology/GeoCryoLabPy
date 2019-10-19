@@ -69,3 +69,4 @@ equipment/**/*.csv
 
 # credential file
 credentials.txt
+/.vscode/settings.json
