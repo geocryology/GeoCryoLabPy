@@ -59,9 +59,13 @@ docs/_build/
 target/
 
 # output files
-*.csv
+experiments/**/*.csv
+equipment/**/*.csv
 *.png
 *.zip
+*.pdf
+*.docx
+*.dat
 
 # credential file
 credentials.txt
