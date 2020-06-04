@@ -12,6 +12,7 @@ def readV21s(folder,files,V21s):
         V21temp = df[df.columns[3]]
         V21temp = [complex(dummy) for dummy in V21temp]
         V21temp = np.real(V21temp)+1j*np.imag(V21temp)
+        #V21s.append(V21temp)
         V21s.append(V21temp/(10**0.5))
     f = np.array(df[df.columns[0]])
     return f,V21s
