@@ -19,10 +19,6 @@ There are several pre-built logging scripts described in the next section, but i
 
 Supports writing configuration commands (see list of useful commands in analyzerCommands.txt) and reading measured data. Connects via USB and uses pyvisa library for communication. The included code in this module can be used to read impedance measurements and record them in a csv file. This code was written mainly for debugging and testing, and should not be used for making proper measurements.
 
-## Agi4395A.py - Vector Network Analyzer (VNA)
-
-This is a module to aid in establishing a connection, communicating and finally disconnecting with an Agilent 4395A VNA.
-
 ## Fluke1502A.py - Thermometer Readout
 
 The thermometer readout uses a Serial connection (9600 BAUD, RTS/CTS enabled). It contains methods for reading and writing configuration data and reading temperature measurements. If a function is not listed below, it is only meant for internal use.
@@ -73,6 +69,15 @@ Again, this uses a Serial connection (9600 BAUD), but it has the following addit
 ## Keysight34972A.py - Data Acquisition Unit
 
 The DAQ uses a USB connecion, and follows the SCPI convention for communication. This is generally used for measuring thermistors, and contains several configuration parameters depending on the type of thermistors you wish to measure.
+
+## Agi4395A.py - Agilent 4395A Vector Network Analyzer
+
+This is a module to aid in establishing connection, communicating and finally disconnecting with an Agilent 4395A analyzer.
+
+## Sol1260A.py - Solartron 1260A Impedance Analyzer
+
+This is a module to aid in establishing connection, communicating and finally disconnecting with a Solartron 1260A analyzer.
+
 
 # Measurement Scripts
 
@@ -164,3 +169,11 @@ Uses the Frequency Response Analyzer to measure impedance and phase values over 
 ## thermistorCalibrate.py
 
 This is the first version of Controller.py and should not be used. It will likely be removed in the future.
+
+## Agi4395A_V21.py
+
+Configures Agilent analyzer based on user specifications and measures ratio of receiver-B to receiver-R voltages in cartesian format as a function of frequency.
+
+## Sol1260A_V12.py
+
+Configures Solartron analyzer based on user specifications and measures ratio of channel-1 to channel-2 voltages in cartesian format as a function of frequency.
