@@ -19,6 +19,10 @@ There are several pre-built logging scripts described in the next section, but i
 
 Supports writing configuration commands (see list of useful commands in analyzerCommands.txt) and reading measured data. Connects via USB and uses pyvisa library for communication. The included code in this module can be used to read impedance measurements and record them in a csv file. This code was written mainly for debugging and testing, and should not be used for making proper measurements.
 
+## Agi4395A.py - Vector Network Analyzer (VNA)
+
+This is a module to aid in establishing a connection, communicating and finally disconnecting with a 4395A VNA.
+
 ## Fluke1502A.py - Thermometer Readout
 
 The thermometer readout uses a Serial connection (9600 BAUD, RTS/CTS enabled). It contains methods for reading and writing configuration data and reading temperature measurements. If a function is not listed below, it is only meant for internal use.
