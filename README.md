@@ -21,7 +21,7 @@ Supports writing configuration commands (see list of useful commands in analyzer
 
 ## Agi4395A.py - Vector Network Analyzer (VNA)
 
-This is a module to aid in establishing a connection, communicating and finally disconnecting with a 4395A VNA.
+This is a module to aid in establishing a connection, communicating and finally disconnecting with an Agilent 4395A VNA.
 
 ## Fluke1502A.py - Thermometer Readout
 
