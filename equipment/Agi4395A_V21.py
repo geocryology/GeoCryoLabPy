@@ -121,10 +121,10 @@ output.write("Number of trials: {}\n".format(counttotal))
 output.write("Frequency, V21_real (precision), V21_imag (precision), V21 (average), V21 (raw data)\n")
 # definition for V21_precision=stdev(V21)/abs(V21_average)
 for i in range(nPoints):
-    S21Real=[results[count]["REAL"][i] for count in counts]
-    S21Imag=[results[count]["IMAG"][i] for count in counts]
-    S21=np.array(S21Real)+1j*np.array(S21Imag)
-    output.write("{},{},{},{},{}\n".format(freqs[i], np.std(np.real(S21))/np.mean(np.abs(np.real(S21))), np.std(np.imag(S21))/np.mean(np.abs(np.imag(S21))), str(np.mean(S21))[1:-1], ", ".join(str(dummy)[1:-1] for dummy in S21)))
+    V21Real=[results[count]["REAL"][i] for count in counts]
+    V21Imag=[results[count]["IMAG"][i] for count in counts]
+    V21=np.array(V21Real)+1j*np.array(V21Imag)
+    output.write("{},{},{},{},{}\n".format(freqs[i], np.std(np.real(V21))/np.mean(np.abs(np.real(V21))), np.std(np.imag(V21))/np.mean(np.abs(np.imag(V21))), str(np.mean(V21))[1:-1], ", ".join(str(dummy)[1:-1] for dummy in V21)))
 
 output.close()
 
