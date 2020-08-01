@@ -70,15 +70,6 @@ Again, this uses a Serial connection (9600 BAUD), but it has the following addit
 
 The DAQ uses a USB connecion, and follows the SCPI convention for communication. This is generally used for measuring thermistors, and contains several configuration parameters depending on the type of thermistors you wish to measure.
 
-## Agi4395A.py - Agilent 4395A Vector Network Analyzer
-
-This is a module to aid in establishing connection, communicating and finally disconnecting with an Agilent 4395A analyzer.
-
-## Sol1260A.py - Solartron 1260A Impedance Analyzer
-
-This is a module to aid in establishing connection, communicating and finally disconnecting with a Solartron 1260A analyzer.
-
-
 # Measurement Scripts
 
 ## logDAQ.py
@@ -171,9 +162,8 @@ Uses the Frequency Response Analyzer to measure impedance and phase values over 
 This is the first version of Controller.py and should not be used. It will likely be removed in the future.
 
 ## Agi4395A_V21.py
+Establishes connection with Agilent analyzer, configures it, measures ratio of receiver-B to receiver-R voltages in cartesian format as a function of frequency, disconnects with analyzer and stores measured data.
 
-Configures Agilent analyzer based on user specifications and measures ratio of receiver-B to receiver-R voltages in cartesian format as a function of frequency.
+## Sol1255B_V12.py
 
-## Sol1260A_V12.py
-
-Configures Solartron analyzer based on user specifications and measures ratio of channel-1 to channel-2 voltages in cartesian format as a function of frequency.
+Establishes connection with Solartron analyzer, configures it, measures ratio of channel-1 to channel-2 voltages (converted to impedance based on Rr value) in polar format as a function of frequency, disconnects with analyzer and stores measured data.
